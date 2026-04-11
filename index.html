@@ -1,21 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  color: #222;
+  background: #fff;
+}
+
+.container {
+  display: flex;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+nav {
+  width: 240px;
+  padding: 20px;
+  border-right: 1px solid #ddd;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+nav a {
+  display: block;
+  margin: 8px 0;
+  color: #333;
+  text-decoration: none;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+main {
+  flex: 1;
+  padding: 20px;
+}
+
+iframe {
+  width: 100%;
+  border: none;
+  height: 80vh;
+}
+
+@media (max-width: 700px) {
+  .container { flex-direction: column; }
+  nav {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <nav>
+    <strong>Blog</strong>
+    <div id="menu"></div>
+  </nav>
+
+  <main>
+    <iframe id="viewer"></iframe>
+  </main>
+</div>
+
 <script>
 fetch("posts.json")
   .then(r => r.json())
   .then(posts => {
-    const nav = document.getElementById("nav");
-    const main = document.getElementById("main");
 
-    posts.forEach(p => {
-      // sidebar link
+    // sort newest first (by filename)
+    posts.sort((a, b) => b.file.localeCompare(a.file));
+
+    const menu = document.getElementById("menu");
+    const viewer = document.getElementById("viewer");
+
+    function load(file) {
+      viewer.src = file;
+    }
+
+    posts.forEach((p, i) => {
       const a = document.createElement("a");
-      a.href = p.file;
+      a.href = "#";
       a.textContent = p.title;
-      nav.appendChild(a);
+      a.onclick = () => load(p.file);
 
-      // optional preview list
-      const div = document.createElement("div");
-      div.innerHTML = `<h2>${p.title}</h2><small>${p.date}</small>`;
-      main.appendChild(div);
+      menu.appendChild(a);
+
+      // auto-load first post
+      if (i === 0) load(p.file);
     });
   });
 </script>
+
+</body>
+</html>
