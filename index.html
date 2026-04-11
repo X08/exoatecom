@@ -1,127 +1,21 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Blog</title>
+<script>
+fetch("posts.json")
+  .then(r => r.json())
+  .then(posts => {
+    const nav = document.getElementById("nav");
+    const main = document.getElementById("main");
 
-<style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  line-height: 1.6;
-  color: #222;
-  background: #fff;
-}
+    posts.forEach(p => {
+      // sidebar link
+      const a = document.createElement("a");
+      a.href = p.file;
+      a.textContent = p.title;
+      nav.appendChild(a);
 
-.container {
-  display: flex;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-/* sidebar */
-nav {
-  width: 220px;
-  padding: 20px;
-  border-right: 1px solid #ddd;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  box-sizing: border-box;
-}
-
-nav a {
-  display: block;
-  color: #333;
-  text-decoration: none;
-  margin: 8px 0;
-}
-
-nav a:hover {
-  text-decoration: underline;
-}
-
-/* main content */
-main {
-  flex: 1;
-  padding: 20px 30px;
-}
-
-/* posts */
-article {
-  margin-bottom: 60px;
-}
-
-h1 {
-  font-size: 24px;
-  margin-top: 0;
-}
-
-.post-date {
-  color: #777;
-  font-size: 14px;
-  margin-bottom: 10px;
-}
-
-/* responsive */
-@media (max-width: 700px) {
-  .container {
-    flex-direction: column;
-  }
-
-  nav {
-    width: 100%;
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid #ddd;
-    position: relative;
-  }
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-<nav>
-  <strong>Blog</strong>
-  <a href="#post1">First post</a>
-  <a href="#post2">Second post</a>
-  <a href="#post3">Third post</a>
-</nav>
-
-<main>
-
-<article id="post1">
-  <h1>First post</h1>
-  <div class="post-date">April 11, 2026</div>
-  <p>
-    This is a clean blog layout. No effects, no simulation, no noise.
-    Just readable structure and navigation.
-  </p>
-</article>
-
-<article id="post2">
-  <h1>Second post</h1>
-  <div class="post-date">April 10, 2026</div>
-  <p>
-    Posts are organized in a simple vertical flow. The sidebar allows quick navigation.
-  </p>
-</article>
-
-<article id="post3">
-  <h1>Third post</h1>
-  <div class="post-date">April 9, 2026</div>
-  <p>
-    This is intentionally minimal so it stays maintainable over time.
-  </p>
-</article>
-
-</main>
-
-</div>
-
-</body>
-</html>
+      // optional preview list
+      const div = document.createElement("div");
+      div.innerHTML = `<h2>${p.title}</h2><small>${p.date}</small>`;
+      main.appendChild(div);
+    });
+  });
+</script>
