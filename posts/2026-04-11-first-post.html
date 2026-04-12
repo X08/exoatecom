@@ -1,9 +1,47 @@
 <!DOCTYPE html>
 <html>
-<body style="font-family: Arial; line-height:1.6;">
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>First post</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #222;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 4px;
+    }
+
+    figure {
+      margin: 24px 0;
+    }
+
+    figcaption {
+      font-size: 14px;
+      color: #666;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
 <h1>MotoPhoto // @x08photo</h1>
 <p>
-<H3>12th April 2026</H3>
+<H3>12 April 2026</H3>
   <br>
   Hey all,
   <br><br>
@@ -19,6 +57,25 @@
   <br>
   <br>
   To contact me you can find me on <a href="https://www.instagram.com/x08photo" target="blank">@x08photo</a> or via email x08photo AT exoate DOT com.
+  <p>
+      <figure>
+    <img
+      src="../images/Moto-800.webp"
+      srcset="
+        ../images/Moto-480.webp 480w,
+        ../images/Moto-800.webp 800w,
+        ../images/Moto-1200.webp 1200w
+      "
+      sizes="(max-width: 700px) 100vw, 800px"
+      width="800"
+      height="500"
+      loading="lazy"
+      decoding="async"
+      alt="A small cabin in the woods"
+    >
+    <figcaption>©x08photo</figcaption>
+  </figure>
+  </p>
   
 </p>
 </body>
