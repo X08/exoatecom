@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partijprogramma — Vermogen Voor Allen</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1814;
+    --ink-mid: #3d3a33;
+    --ink-light: #6b6760;
+    --paper: #f5f2ea;
+    --paper-dark: #e8e3d6;
+    --rule: #c8c2b0;
+    --accent: #8b2c1a;
+    --accent-light: #d4492e;
+    --gold: #b8860b;
+    --gold-light: #d4a017;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 300;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 3rem 2rem 6rem;
+  }
+
+  /* MASTHEAD */
+  .masthead {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    border-top: 3px double var(--ink);
+    border-bottom: 3px double var(--ink);
+    margin-bottom: 3.5rem;
+    position: relative;
+  }
+
+  .party-symbol {
+    font-size: 2rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .party-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
+  }
+
+  .party-sub {
+    font-style: italic;
+    font-size: 1.15rem;
+    color: var(--ink-mid);
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
+  }
+
+  .masthead-rule {
+    width: 80px;
+    height: 1px;
+    background: var(--gold);
+    margin: 1rem auto;
+  }
+
+  .edition-line {
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+  }
+
+  /* LEAD */
+  .lead {
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1.9;
+    color: var(--ink-mid);
+    border-left: 3px solid var(--accent);
+    padding-left: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  /* SECTION */
+  .section {
+    margin-bottom: 3rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .section:last-of-type { border-bottom: none; }
+
+  .section-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.4rem;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--ink);
+    margin-bottom: 1.25rem;
+  }
+
+  h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--ink-mid);
+    margin: 2rem 0 0.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  p {
+    margin-bottom: 1.1rem;
+    color: var(--ink-mid);
+  }
+
+  p strong {
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* NUMBERS BLOCK */
+  .numbers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 2rem 0;
+  }
+
+  .number-cell {
+    background: var(--paper);
+    padding: 1.25rem 1rem;
+    text-align: center;
+  }
+
+  .number-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+
+  .number-label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    line-height: 1.4;
+  }
+
+  /* CALLOUT */
+  .callout {
+    background: var(--paper-dark);
+    border-left: 4px solid var(--gold);
+    padding: 1.25rem 1.5rem;
+    margin: 2rem 0;
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--ink);
+    line-height: 1.7;
+  }
+
+  /* POLICY LIST */
+  .policy-list {
+    list-style: none;
+    margin: 1.5rem 0;
+  }
+
+  .policy-list li {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px dashed var(--rule);
+    color: var(--ink-mid);
+  }
+
+  .policy-list li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .policy-marker {
+    flex-shrink: 0;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--accent);
+    font-size: 1.1rem;
+    margin-top: 0.1rem;
+  }
+
+  /* OBJECTIONS */
+  .objection-block {
+    margin: 1.5rem 0;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+
+  .objection-q {
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
+    font-style: italic;
+  }
+
+  .objection-a {
+    color: var(--ink-mid);
+    font-size: 0.95rem;
+    margin: 0;
+  }
+
+  /* TABLE */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 1.5rem 0;
+  }
+
+  .data-table th {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    font-weight: 400;
+    border-bottom: 2px solid var(--ink);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+
+  .data-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-mid);
+  }
+
+  .data-table td:first-child { color: var(--ink); font-weight: 400; }
+
+  .data-table .total-row td {
+    font-weight: 500;
+    color: var(--ink);
+    border-top: 2px solid var(--ink);
+    border-bottom: none;
+  }
+
+  .data-table .highlight td { color: var(--accent); font-weight: 500; }
+
+  /* FOOTER */
+  .doc-footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 3px double var(--ink);
+    text-align: center;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+  }
+
+  /* DROPCAP */
+  .dropcap::first-letter {
+    font-family: 'Playfair Display', serif;
+    float: left;
+    font-size: 4.2rem;
+    line-height: 0.85;
+    padding-right: 0.1em;
+    padding-top: 0.05em;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* PHASE TIMELINE */
+  .timeline {
+    position: relative;
+    padding-left: 2rem;
+    margin: 2rem 0;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--rule);
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 1.75rem;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.6rem;
+    top: 0.5rem;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .timeline-period {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.2rem;
+  }
+
+  .timeline-title {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--ink);
+    margin-bottom: 0.4rem;
+  }
+
+  .timeline-body {
+    font-size: 0.93rem;
+    color: var(--ink-mid);
+    margin: 0;
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 2rem 1.25rem 4rem; }
+    .party-name { font-size: 2.2rem; }
+    h2 { font-size: 1.5rem; }
+    .number-value { font-size: 1.8rem; }
+  }
+
+  @media print {
+    body { background: white; }
+    .numbers-grid { background: #ddd; }
+    .number-cell { background: white; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="party-symbol">◆ VVA ◆</div>
+  <h1 class="party-name">Vermogen Voor Allen</h1>
+  <div class="party-sub">Vrijheid door eenvoud. Zekerheid voor iedereen.</div>
+  <div class="masthead-rule"></div>
+  <div class="edition-line">Partijprogramma 2026 — Conceptversie</div>
+</div>
+
+<p class="lead dropcap">
+  Het Nederlandse belastingstelsel is een sediment van decennia aan reparatiewerk: meer dan driehonderd heffingen, een belastingdienst van tienduizenden medewerkers, toelagen die toelagen corrigeren, en een bijstandsstelsel dat mensen straft voor het aannemen van werk. Wij stellen een radicale vereenvoudiging voor: één belasting, op vermogen. En één zekerheid, voor iedereen.
+</p>
+
+<!-- KERN -->
+<div class="section">
+  <div class="section-number">Artikel I</div>
+  <h2>De kernpropositie</h2>
+
+  <p><strong>Vermogen Voor Allen (VVA)</strong> stelt voor het gehele Nederlandse belastingstelsel te vervangen door één enkele heffing op nettovermogen, gecombineerd met een universeel basisinkomen voor alle inwoners. Geen inkomstenbelasting. Geen BTW. Geen vennootschapsbelasting. Geen accijnzen. Geen toeslagen. Geen bijstand. Geen AOW als aparte regeling. Eén tarief, één grondslag, één uitkering.</p>
+
+  <div class="numbers-grid">
+    <div class="number-cell">
+      <div class="number-value">7,5%</div>
+      <div class="number-label">Vermogensbelasting<br>op nettovermogen</div>
+    </div>
+    <div class="number-cell">
+      <div class="number-value">€1.400</div>
+      <div class="number-label">Universeel basisinkomen<br>per volwassene per maand</div>
+    </div>
+    <div class="number-cell">
+      <div class="number-value">€500K</div>
+      <div class="number-label">Vrijstelling primaire<br>woning (ondergrens)</div>
+    </div>
+    <div class="number-cell">
+      <div class="number-value">0</div>
+      <div class="number-label">Overige<br>belastingen</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    "Een belastingstelsel is rechtvaardig wanneer het moeiteloos te begrijpen is door de mensen die het financieren. Het onze is dat al twintig jaar niet meer."
+  </div>
+</div>
+
+<!-- REKENWERK -->
+<div class="section">
+  <div class="section-number">Artikel II</div>
+  <h2>De fiscale rekensom</h2>
+
+  <p>De volgende berekeningen zijn gebaseerd op CBS- en DNB-cijfers 2024–2025 en representeren een structurele evenwichtssituatie na volledige invoering. Niet de transitie, maar het eindmodel.</p>
+
+  <h3>A. De belastinggrondslag</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Vermogenscategorie</th>
+        <th>Geschatte waarde</th>
+        <th>Toelichting</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Nettovermogen huishoudens</td>
+        <td>~€2,0 biljoen</td>
+        <td>Na aftrek hypotheekschuld</td>
+      </tr>
+      <tr>
+        <td>Binnenlands bedrijfsvermogen</td>
+        <td>~€1,2 biljoen</td>
+        <td>Excl. doorstroomholdings multinationals</td>
+      </tr>
+      <tr>
+        <td>Institutioneel vermogen (deels)</td>
+        <td>~€0,7 biljoen</td>
+        <td>Pensioenfondsen: verlaagd tarief 1%</td>
+      </tr>
+      <tr>
+        <td>Commercieel vastgoed</td>
+        <td>~€0,4 biljoen</td>
+        <td>Inclusief niet-woningvastgoed</td>
+      </tr>
+      <tr class="highlight">
+        <td>Totale grondslag (volledig tarief)</td>
+        <td>~€3,9 biljoen</td>
+        <td>Na vrijstellingen primaire woning &lt;€500K</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>B. Inkomsten en uitgaven</h3>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Post</th>
+        <th>Bedrag</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Opbrengst vermogensbelasting 7,5% × €3,9T</td>
+        <td>+ €293 mld</td>
+      </tr>
+      <tr>
+        <td>Pensioenfondsen 1% × €0,7T</td>
+        <td>+ €7 mld</td>
+      </tr>
+      <tr>
+        <td>Overige staatsinkomsten (dividend staatsdeelnemingen e.d.)</td>
+        <td>+ €15 mld</td>
+      </tr>
+      <tr class="total-row">
+        <td>Totale staatsinkomsten</td>
+        <td>~€315 mld</td>
+      </tr>
+      <tr>
+        <td>Rijksuitgaven na afschaffing welzijnsstelsel</td>
+        <td>– €333 mld</td>
+      </tr>
+      <tr>
+        <td>Universeel basisinkomen (14,5 mln volwassenen × €16.800)</td>
+        <td>– €244 mld</td>
+      </tr>
+      <tr>
+        <td>Vrijval welzijnsuitgaven (bijstand, WW, toeslagen, AOW, WIA etc.)</td>
+        <td>+ €195 mld</td>
+      </tr>
+      <tr>
+        <td>Vrijval Belastingdienst handhavingskosten (netto)</td>
+        <td>+ €6 mld</td>
+      </tr>
+      <tr class="total-row">
+        <td>Netto begrotingssaldo (structureel)</td>
+        <td>≈ –€61 mld (transitietekort)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><strong>Eerlijk over het tekort:</strong> Het structurele model sluit niet volledig bij 7,5%. Er blijft een transitietekort van circa €40–60 miljard per jaar gedurende de invoeringsperiode, te dekken via staatsobligaties en stapsgewijze afbouw van het oude stelsel. Na volledige waardecorrectie van vermogen (zie artikel V) en verbreding van de grondslag zal dit convergeren. Een tarief van 9–10% zou het saldo dichten, maar vergroot kapitaalvlucht. 7,5% is het politiek houdbare evenwicht.</p>
+
+  <div class="callout">
+    Het basisinkomen van €1.400 per maand is berekend op de werkelijke kosten van levensonderhoud na afschaffing van BTW en accijnzen. De geraamde maandlasten voor een alleenstaande buiten de Randstad dalen naar €1.250–1.400. Het basisinkomen dekt dit volledig.
+  </div>
+</div>
+
+<!-- KOOPKRACHT -->
+<div class="section">
+  <div class="section-number">Artikel III</div>
+  <h2>Koopkracht na hervorming</h2>
+
+  <p>De koopkracht van het basisinkomen is direct afhankelijk van het prijsniveau na belastingafschaffing. De volgende tabel vergelijkt de huidige situatie met het VVA-scenario voor een alleenstaande.</p>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Kostenpost</th>
+        <th>Huidig (per maand)</th>
+        <th>Na VVA</th>
+        <th>Verschil</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Huur (buiten Randstad)</td>
+        <td>€900–1.100</td>
+        <td>€600–750</td>
+        <td>–30–35% (vermogensdruk)</td>
+      </tr>
+      <tr>
+        <td>Boodschappen</td>
+        <td>€320–380</td>
+        <td>€285–340</td>
+        <td>–9% (BTW-verdwijning)</td>
+      </tr>
+      <tr>
+        <td>Energie / gas / water</td>
+        <td>€170–220</td>
+        <td>€120–155</td>
+        <td>–25–30% (accijns verdwijning)</td>
+      </tr>
+      <tr>
+        <td>Transport (OV / auto)</td>
+        <td>€100–150</td>
+        <td>€75–110</td>
+        <td>–20% (brandstofaccijns)</td>
+      </tr>
+      <tr>
+        <td>Zorgverzekering</td>
+        <td>€159</td>
+        <td>€0 (opgenomen in basisinkomen)</td>
+        <td>Structuurwijziging</td>
+      </tr>
+      <tr class="total-row">
+        <td>Totaal levensonderhoud</td>
+        <td>±€1.700–2.000</td>
+        <td>±€1.200–1.400</td>
+        <td>–25 tot –30%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Het basisinkomen van <strong>€1.400</strong> dekt het geraamde levensonderhoud. Mensen met additioneel inkomen (arbeidsinkomen, verhuur, etc.) behouden dit volledig — er is geen afbouw, geen marginale belastingwig, geen armoedeval.</p>
+</div>
+
+<!-- VERMOGENSBELASTING STRUCTUUR -->
+<div class="section">
+  <div class="section-number">Artikel IV</div>
+  <h2>Structuur van de vermogensbelasting</h2>
+
+  <h3>Grondslag en vrijstellingen</h3>
+
+  <ul class="policy-list">
+    <li>
+      <span class="policy-marker">§1</span>
+      <span><strong>Primaire woning vrijstelling:</strong> De eerste €500.000 van de eigen woning is vrijgesteld. Waarde daarboven wordt volledig belast. Dit beschermt de middenklasse terwijl beleggingsvastgoed volledig wordt aangeslagen.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§2</span>
+      <span><strong>Pensioenvermogen verlaagd tarief:</strong> Vermogen in erkende pensioenfondsen en lijfrenteconstructies wordt belast tegen 1% in plaats van 7,5%. Dit beschermt de pensioenopbouw van werkenden.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§3</span>
+      <span><strong>Kleine vermogens:</strong> Geen belasting op nettovermogen onder €50.000. Dit beschermt mensen met bescheiden spaargeld volledig.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§4</span>
+      <span><strong>Bedrijfsvermogen in actief gebruik:</strong> Werkende familiebedrijven met aantoonbaar actief ondernemerschap kennen een overgangsregeling van 5 jaar en een verlaagd aanlooptarief van 3,75%.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§5</span>
+      <span><strong>Multinationals en doorstroomconstructies:</strong> Vermogen dat uitsluitend op Nederlandse bodem staat voor fiscale doorstroomdoeleinden zonder materiële economische activiteit wordt niet belast — maar evenmin beschermd. Nederland verliest zijn functie als belastingparadijs; dat is een gewenste bijwerking.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§6</span>
+      <span><strong>Buitenlands vermogen van Nederlandse ingezetenen:</strong> Meldingsplicht en volledige belasting conform het Wereld-Inkomen-principe. Verdragsrechtelijke aanpassing via Europese en bilaterale kanalen.</span>
+    </li>
+  </ul>
+
+  <h3>Vaststelling en inning</h3>
+
+  <ul class="policy-list">
+    <li>
+      <span class="policy-marker">§7</span>
+      <span><strong>Jaarlijkse waardering:</strong> Vermogen wordt gewaardeerd op 1 januari van elk jaar op marktwaarde. Voor vastgoed via de WOZ-systematiek (herzien). Voor aandelen via beurskoers of onafhankelijke taxatie bij niet-beursgenoteerde bedrijven.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§8</span>
+      <span><strong>Liquiditeitsfaciliteit:</strong> Belastingplichtigen die tijdelijk onvoldoende liquide zijn (bijv. DGA's met vastgoed) kunnen tot 50% van de aanslag spreiden over 5 jaar à 0% rente. Kapitaalvlucht preventie heeft hogere prioriteit dan onmiddellijke inning.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§9</span>
+      <span><strong>Vereenvoudigde Belastingdienst:</strong> De Belastingdienst wordt gereorganiseerd tot een Vermogensdienst van circa 8.000 medewerkers, uitsluitend belast met vermogenswaardering, controle en inning. De huidige 30.000-koppige bureaucratie is niet langer nodig.</span>
+    </li>
+  </ul>
+</div>
+
+<!-- UNIVERSEEL BASISINKOMEN -->
+<div class="section">
+  <div class="section-number">Artikel V</div>
+  <h2>Het universeel basisinkomen</h2>
+
+  <h3>Kerneigenschappen</h3>
+
+  <ul class="policy-list">
+    <li>
+      <span class="policy-marker">§1</span>
+      <span><strong>Universeel:</strong> Iedere inwoner van Nederland van 18 jaar en ouder ontvangt €1.400 netto per maand, ongeacht arbeidsverleden, nationaliteit (na 5 jaar legaal verblijf) of andere voorwaarden.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§2</span>
+      <span><strong>Onvoorwaardelijk:</strong> Het basisinkomen wordt niet gekort bij het aanvaarden van werk, het starten van een onderneming, het ontvangen van giften of bij verandering van leefsituatie. Er is geen inkomenstoets, geen vermogenstoets, geen arbeidsplicht.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§3</span>
+      <span><strong>Minderjarigen:</strong> Voor kinderen onder 18 jaar ontvangt de ouder of verzorger €500 per kind per maand (vervanger kinderbijslag, kinderopvangtoeslag, schoolkosten).</span>
+    </li>
+    <li>
+      <span class="policy-marker">§4</span>
+      <span><strong>Geen vervanging zorgbehoefte:</strong> Het basisinkomen vervangt geen geïndiceerde zorg. Mensen met een erkende zorgbehoefte ontvangen aanvullend zorgbudget via een sterk vereenvoudigd WLZ/Wmo-stelsel.</span>
+    </li>
+    <li>
+      <span class="policy-marker">§5</span>
+      <span><strong>Indexering:</strong> Het basisinkomen wordt jaarlijks geïndexeerd aan de kerninflatie (HICP minus energie), met een minimum van 0% en een maximum van 3% per jaar.</span>
+    </li>
+  </ul>
+
+  <h3>Wat vervalt</h3>
+
+  <p>Met de invoering van het basisinkomen vervallen de volgende regelingen volledig:</p>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Regeling</th><th>Jaarlijkse vrijval</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>AOW (Algemene Ouderdomswet)</td><td>~€44 mld</td></tr>
+      <tr><td>Bijstandsuitkeringen (Participatiewet)</td><td>~€7 mld</td></tr>
+      <tr><td>WW (Werkloosheidswet)</td><td>~€5 mld</td></tr>
+      <tr><td>WIA / WAO (arbeidsongeschiktheid)</td><td>~€12 mld</td></tr>
+      <tr><td>Zorgtoeslag</td><td>~€8 mld</td></tr>
+      <tr><td>Huurtoeslag</td><td>~€5 mld</td></tr>
+      <tr><td>Kinderbijslag / kinderopvangtoeslag</td><td>~€7 mld</td></tr>
+      <tr><td>Overige toeslagen en regelingen</td><td>~€25 mld</td></tr>
+      <tr class="total-row"><td>Totale vrijval</td><td>~€113 mld directe regelingen</td></tr>
+    </tbody>
+  </table>
+
+  <p><em>Noot: pensioenfondsen blijven opereren als aanvullend pensioen bovenop het basisinkomen. De AOW-grondslag verdwijnt; opgebouwd aanvullend pensioen blijft volledig intact.</em></p>
+</div>
+
+<!-- HUIZENMARKT -->
+<div class="section">
+  <div class="section-number">Artikel VI</div>
+  <h2>De woningmarkt: een bewuste reset</h2>
+
+  <p>Een vermogensbelasting van 7,5% op vastgoedvermogen verandert de woningmarkt fundamenteel. VVA is hier eerlijk over: dit is <strong>geen onbedoeld neveneffect</strong>. Het is een centraal doel.</p>
+
+  <h3>Verwachte effecten</h3>
+
+  <ul class="policy-list">
+    <li>
+      <span class="policy-marker">▼</span>
+      <span><strong>Prijsdaling beleggingsvastgoed:</strong> Vastgoed als beleggingsvehikel wordt onaantrekkelijk bij een jaarlijkse belastingdruk van 7,5% op de waarde. Verwachte daling: 35–55% voor beleggerspanden, 20–35% voor koopwoningen boven de vrijstellingsgrens. Dit is de correctie die de woningmarkt al twintig jaar nodig heeft.</span>
+    </li>
+    <li>
+      <span class="policy-marker">▲</span>
+      <span><strong>Toename woningaanbod:</strong> Vermogensbezitters met meerdere panden zullen deze te koop aanbieden. Dit vergroot het aanbod structureel en verlaagt huren.</span>
+    </li>
+    <li>
+      <span class="policy-marker">!</span>
+      <span><strong>Risico hypotheekhouders:</strong> Woningbezitters met een hoge hypotheek ten opzichte van de waarde komen mogelijk in negatief eigen vermogen. VVA introduceert een <strong>Woonzekerheidsgarantie</strong>: gedwongen verkoop op initiatief van de bank is gedurende 10 jaar na invoering niet mogelijk zolang hypotheekbetalingen worden voldaan.</span>
+    </li>
+    <li>
+      <span class="policy-marker">!</span>
+      <span><strong>Bankenstelsel:</strong> Nederlandse banken dragen aanzienlijke hypotheekrisico's. VVA werkt nauw samen met DNB voor een gefaseerde afbouw van de risicoblootstelling en verplichte bufferopbouw in de transitieperiode.</span>
+    </li>
+  </ul>
+
+  <div class="callout">
+    Een woning is een thuis, geen financieel instrument. De vermogensbelasting herstelt dit onderscheid. Pijnloos gaat dit niet. Maar de huidige situatie — wherein vermogen bezit beloont en arbeid bestraft — is evenmin pijnloos. De pijn is nu alleen onzichtbaar, en valt op anderen.
+  </div>
+</div>
+
+<!-- BEZWAREN -->
+<div class="section">
+  <div class="section-number">Artikel VII</div>
+  <h2>Veelgestelde bezwaren</h2>
+
+  <div class="objection-block">
+    <p class="objection-q">"7,5% overstijgt het rendement op veel vermogen. Mensen moeten interen op hun kapitaal."</p>
+    <p class="objection-a">Correct. Dit is de bedoeling voor passief vermogen zonder maatschappelijke bijdrage. Vermogen dat productief wordt ingezet (bedrijven, innovatie, verhuur aan reële marktprijzen) genereert rendement. Vermogen dat puur accumuleert omdat bezit beloond wordt, hoort niet fiscaal te worden beschermd. De liquiditeitsfaciliteit voorkomt dat mensen gedwongen worden te verkopen wanneer tijdelijk liquiditeit ontbreekt.</p>
+  </div>
+
+  <div class="objection-block">
+    <p class="objection-q">"Rijken vluchten weg met hun vermogen."</p>
+    <p class="objection-a">Deels terecht. Financieel vermogen is mobieler dan vastgoed. Schatting: 15–25% van het belastbare financiële vermogen zal deels wegvloeien in de eerste vijf jaar. Vastgoed kan niet vluchten. Bedrijven met echte operaties evenmin. De grondslag krimpt, maar het systeem is al bij 60% realisatie levensvatbaar. Bovendien: Nederland was ook als belastingparadijs niet ontworpen voor zijn eigen burgers. Dat verlies is aanvaardbaar.</p>
+  </div>
+
+  <div class="objection-block">
+    <p class="objection-q">"€1.400 is niet genoeg om in de Randstad van te leven."</p>
+    <p class="objection-a">In Amsterdam of Utrecht op dit moment inderdaad niet. Na de verwachte huurcorrectie van 30–40% als gevolg van de vermogensbelasting op beleggingsvastgoed: wel. De transitie duurt 5–10 jaar. In die periode blijft het huidige woningtoeslagenstelsel deels actief als vangnet voor de Randstad.</p>
+  </div>
+
+  <div class="objection-block">
+    <p class="objection-q">"Pensionados die hun hele leven gespaard hebben worden nu gestraft."</p>
+    <p class="objection-a">Nee. De vrijstelling van €50.000 beschermt bescheiden spaargelden volledig. De eigen woning tot €500.000 is vrijgesteld. Pensioenvermogen wordt belast tegen 1%, niet 7,5%. En het basisinkomen van €1.400 vervangt de AOW van gemiddeld €1.300 voor alleenstaanden — en overtreft dit voor velen. Degenen die zijn benadeeld zijn mensen met meerdere woningen of zeer groot beleggingsvermogen. Dat is precies de bedoeling.</p>
+  </div>
+
+  <div class="objection-block">
+    <p class="objection-q">"Dit is in strijd met EU-regelgeving (BTW-afschaffing, staatssteun)."</p>
+    <p class="objection-a">De EU BTW-richtlijn schrijft lidstaten een minimumtarief voor maar de Nederlandse staat kan ervoor kiezen geen BTW te handhaven op de binnenlandse markt als het bereid is de EU-bijdrage anders te berekenen. Dit vereist onderhandeling, geen revolutie. Nederland draagt thans circa €10 mld per jaar aan de EU. Dit blijft verschuldigd en wordt gefinancierd vanuit de vermogensbelasting.</p>
+  </div>
+</div>
+
+<!-- INVOERING -->
+<div class="section">
+  <div class="section-number">Artikel VIII</div>
+  <h2>Invoering: tien jaar, niet één dag</h2>
+
+  <p>VVA is geen beleid dat per 1 januari van het volgende jaar ingaat. Het is een tienjarig transformatieprogramma.</p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-period">Jaar 1–2</div>
+      <div class="timeline-title">Wetgeving en grondslag</div>
+      <p class="timeline-body">Invoering vermogensregistratie en -waarderingsysteem. Opbouw Vermogensdienst. Eerste belastingjaar met tarief 2%. Basisinkomen nog niet ingevoerd — systemen worden gebouwd. Geen afschaffing bestaand stelsel.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-period">Jaar 3–4</div>
+      <div class="timeline-title">Parallelle invoering</div>
+      <p class="timeline-body">Basisinkomen ingevoerd op €800/maand als aanvulling op bestaande regelingen. Tarief vermogensbelasting stijgt naar 4%. Inkomstenbelasting verlaagd met 40%. BTW verlaagd naar 10%.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-period">Jaar 5–7</div>
+      <div class="timeline-title">Halvering oud stelsel</div>
+      <p class="timeline-body">Basisinkomen naar €1.100/maand. Tarief naar 6%. Bijstand en WW worden afgebouwd. BTW naar 5%. Woningmarktcorrectie verwacht in deze periode — woonzekerheidsgarantie actief.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-period">Jaar 8–10</div>
+      <div class="timeline-title">Volledig model</div>
+      <p class="timeline-body">Basisinkomen op €1.400/maand. Tarief op 7,5%. Alle overige belastingen en toeslagen afgeschaft. Belastingdienst omgevormd tot Vermogensdienst. Evaluatie en bijstelling op basis van gerealiseerde grondslag en prijsontwikkeling.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FILOSOFIE -->
+<div class="section">
+  <div class="section-number">Artikel IX</div>
+  <h2>Politieke filosofie</h2>
+
+  <p>VVA is geen links noch rechts programma in traditionele zin. Het is een <strong>structureel</strong> programma.</p>
+
+  <p>De huidige verdeling van belastingdruk beloont vermogensbezit en bestraft arbeid en consumptie. Wie werkt, betaalt inkomstenbelasting. Wie koopt, betaalt BTW. Wie niets doet behalve vermogen bezitten, betaalt effectief minder dan een medewerker in de zorg. Dit is geen marktuitkomst. Het is een politieke keuze, door decennia van wetgeving geconsolideerd.</p>
+
+  <p>VVA keert deze verhouding om. Niet om rijkdom te vernietigen, maar om de grondslag van belasting te verschuiven van <strong>doen</strong> naar <strong>hebben</strong>. Wie werkt, onderneemt, consumeert of bouwt: geen cent belasting. Wie vermogen opbouwt en aanhoudt: een eerlijke bijdrage aan de samenleving die dat vermogen beschermt.</p>
+
+  <p>Het basisinkomen is geen liefdadigheid. Het is de erkenning dat de technologische en institutionele infrastructuur waarop alle vermogen rust — wegen, rechtssystemen, onderwijs, gezondheidszorg, sociale stabiliteit — collectief eigendom is, en een collectief dividend rechtvaardigt.</p>
+
+  <div class="callout">
+    "Wij vragen niemand om minder te willen. Wij vragen iedereen om eerlijker bij te dragen. En wij geven iedereen de vrijheid om te leven zonder het bijstandsloket."
+  </div>
+</div>
+
+<!-- POLITIEKE CELIBACY -->
+<div class="section">
+  <div class="section-number">Artikel X</div>
+  <h2>Politiek celibaat</h2>
+
+  <p>VVA introduceert het concept van <strong>politiek celibaat</strong> voor bestuurders in sleutelfuncties. Bewindslieden, staatsecretarissen en leden van de Raad van State dragen hun particulier vermogen boven €500.000 over aan een <strong>blinde trust</strong> voor de duur van hun ambtstermijn, beheerd door een onafhankelijke stichting zonder instructiebevoegdheid van de bewindspersoon.</p>
+
+  <p>Lobbying door voormalige bewindslieden is gedurende vijf jaar na ambtsverlating verboden bij de ministeries en toezichthouders waaronder hun portefeuille viel. Overtreding wordt behandeld als misbruik van ambtelijk vertrouwen.</p>
+
+  <p>Politieke partijen mogen geen donaties ontvangen van rechtspersonen. Individuele donaties zijn gemaximeerd op €5.000 per jaar per persoon. Partijfinanciering geschiedt primair via een transparant publiek systeem op basis van stemgedrag.</p>
+</div>
+
+<div class="doc-footer">
+  <p>Vermogen Voor Allen (VVA) — Conceptprogramma 2026</p>
+  <p style="margin-top: 0.5rem;">Dit document is een analytisch programmavoorstel en geen officieel geregistreerd partijdocument.</p>
+</div>
+
+</body>
+</html>
