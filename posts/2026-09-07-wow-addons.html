@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X08_WoW_3.3.5a — exoate.com</title>
+<style>
+  :root {
+    --bg: #14110f;
+    --panel: #1c1815;
+    --border: #35302a;
+    --text: #e8e1d4;
+    --text-dim: #a89d8a;
+    --accent: #c98a3b;
+    --code-bg: #0f0d0b;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    line-height: 1.6;
+  }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 64px 24px 96px;
+  }
+
+  .backlink {
+    display: inline-block;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+    margin-bottom: 40px;
+    border-bottom: 1px solid transparent;
+  }
+  .backlink:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  header.post-head {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 28px;
+    margin-bottom: 40px;
+  }
+
+  h1.post-title {
+    font-size: 2.1rem;
+    margin: 0 0 10px;
+    color: var(--text);
+    font-weight: 400;
+  }
+
+  .post-meta {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .post-meta a { color: var(--accent); text-decoration: none; }
+  .post-meta a:hover { text-decoration: underline; }
+
+  .sync-tag {
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+  }
+
+  #readme-content h1,
+  #readme-content h2,
+  #readme-content h3 {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-weight: 600;
+    color: var(--text);
+  }
+  #readme-content h1 { font-size: 1.5rem; margin-top: 2.2em; }
+  #readme-content h2 { font-size: 1.25rem; margin-top: 2em; }
+  #readme-content h3 { font-size: 1.05rem; margin-top: 1.6em; }
+
+  #readme-content p { color: var(--text); }
+
+  #readme-content a { color: var(--accent); }
+
+  #readme-content code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 0.85em;
+  }
+
+  #readme-content pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+  }
+  #readme-content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  #readme-content ul, #readme-content ol {
+    padding-left: 1.3em;
+  }
+
+  #readme-content img {
+    max-width: 100%;
+    border-radius: 4px;
+  }
+
+  #readme-content table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.9rem;
+  }
+  #readme-content th, #readme-content td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: left;
+  }
+
+  #readme-content blockquote {
+    margin: 0;
+    padding-left: 16px;
+    border-left: 3px solid var(--accent);
+    color: var(--text-dim);
+  }
+
+  .state-msg {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  .state-msg.error { color: #c9583b; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="backlink" href="/">&larr; back to exoate.com</a>
+
+    <header class="post-head">
+      <h1 class="post-title">X08_WoW_3.3.5a</h1>
+      <div class="post-meta">
+        <span>Addon documentation, pulled live from GitHub</span>
+        <a href="https://github.com/X08/X08_WoW_3.3.5a" target="_blank" rel="noopener">View repository →</a>
+        <span class="sync-tag" id="sync-tag">syncing…</span>
+      </div>
+    </header>
+
+    <div id="readme-content">
+      <p class="state-msg">Loading README from GitHub…</p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <script>
+    const REPO = 'X08/X08_WoW_3.3.5a';
+    const BRANCHES = ['main', 'master'];
+    const contentEl = document.getElementById('readme-content');
+    const syncTag = document.getElementById('sync-tag');
+
+    async function loadReadme() {
+      for (const branch of BRANCHES) {
+        try {
+          const res = await fetch(`https://raw.githubusercontent.com/${REPO}/${branch}/README.md`, { cache: 'no-cache' });
+          if (!res.ok) continue;
+          const md = await res.text();
+          contentEl.innerHTML = marked.parse(md);
+          syncTag.textContent = 'live from ' + branch;
+          return;
+        } catch (e) {
+          // try next branch
+        }
+      }
+      contentEl.innerHTML = '<p class="state-msg error">Could not load the README right now. ' +
+        '<a href="https://github.com/' + REPO + '" target="_blank" rel="noopener">View it directly on GitHub</a>.</p>';
+      syncTag.textContent = 'sync failed';
+    }
+
+    loadReadme();
+  </script>
+</body>
+</html>
