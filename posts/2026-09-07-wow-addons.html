@@ -26,7 +26,6 @@
 
   a { color: #222; }
   a:hover { color: #666; }
-
   .meta {
     font-size: 14px;
     color: #666;
@@ -37,7 +36,6 @@
   #readme-content h1 { font-size: 1.5em; margin-top: 1.6em; }
   #readme-content h2 { font-size: 1.25em; margin-top: 1.4em; color: #222; }
   #readme-content h3 { font-size: 1.1em; margin-top: 1.2em; color: #222; font-weight: bold; }
-
   #readme-content code {
     background: #f2f2f2;
     padding: 1px 5px;
@@ -64,7 +62,6 @@
     border-radius: 4px;
     margin: 16px 0;
   }
-
   #readme-content table {
     border-collapse: collapse;
     width: 100%;
@@ -92,7 +89,6 @@
 </style>
 </head>
 <body>
-
   <h1>X08_WoW_3.3.5a</h1>
   <h3>Addon documentation, pulled live from GitHub</h3>
 
@@ -105,13 +101,26 @@
   <div id="readme-content">
     <p class="state-msg">Loading README from GitHub…</p>
   </div>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
   <script>
     const REPO = 'X08/X08_WoW_3.3.5a';
     const BRANCHES = ['main', 'master'];
     const contentEl = document.getElementById('readme-content');
     const syncTag = document.getElementById('sync-tag');
+
+    function makeExternalLinksOpenInNewTab() {
+      document.querySelectorAll('a[href]').forEach(link => {
+        const url = new URL(link.href, window.location.href);
+
+        if (
+          (url.protocol === 'http:' || url.protocol === 'https:') &&
+          url.hostname !== window.location.hostname
+        ) {
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+        }
+      });
+    }
 
     async function loadReadme() {
       for (const branch of BRANCHES) {
@@ -120,6 +129,7 @@
           if (!res.ok) continue;
           const md = await res.text();
           contentEl.innerHTML = marked.parse(md);
+          makeExternalLinksOpenInNewTab();
           syncTag.textContent = 'live from ' + branch;
           return;
         } catch (e) {
@@ -129,8 +139,8 @@
       contentEl.innerHTML = '<p class="state-msg error">Could not load the README right now. ' +
         '<a href="https://github.com/' + REPO + '" target="_blank" rel="noopener">View it directly on GitHub</a>.</p>';
       syncTag.textContent = 'sync failed';
+      makeExternalLinksOpenInNewTab();
     }
-
     loadReadme();
   </script>
 
