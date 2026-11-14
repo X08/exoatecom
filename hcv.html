@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HC Vault Search</title>
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#141821; --line:#252b38; --text:#e6e9f0; --muted:#8a93a6; --accent:#6aa7ff;
+    --q0:#9d9d9d; --q1:#ffffff; --q2:#1eff00; --q3:#0070dd; --q4:#a335ee; --q5:#ff8000; --q6:#e6cc80;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+  header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  h1{font-size:18px;margin:0;font-weight:600}
+  a{color:var(--accent)}
+  main{max-width:1100px;margin:0 auto;padding:16px 20px 60px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  input,select,button,textarea{background:#0e1118;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 9px;font:inherit}
+  input[type=search]{min-width:240px;flex:1}
+  input[type=number]{width:84px}
+  button{cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);color:#06101f;border-color:var(--accent);font-weight:600}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{padding:4px 10px;border-radius:999px;border:1px solid var(--line);cursor:pointer;user-select:none;font-size:12px}
+  .chip.on{background:#1b2333;border-color:currentColor}
+  .meta{color:var(--muted);font-size:12px;margin:4px 0 10px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:12px;color:var(--muted);font-weight:500;cursor:pointer;white-space:nowrap}
+  th.sorted{color:var(--text)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  th.num{text-align:right}
+  .name{font-weight:600}
+  .icon{width:28px;height:28px;border-radius:4px;vertical-align:middle;margin-right:8px;background:#0e1118}
+  details summary{cursor:pointer;color:var(--muted)}
+  textarea{width:100%;min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .msg{padding:8px 10px;border-radius:6px;margin-top:8px;font-size:13px}
+  .msg.err{background:#2a1517;border:1px solid #5a2a2e}
+  .msg.ok{background:#12251a;border:1px solid #28523a}
+  .maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-top:10px}
+  @media (max-width:640px){ th.hide-m,td.hide-m{display:none} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Hardcore Vault Search</h1>
+  <span class="meta" style="margin:0">Search and sort for <a href="https://hcvault.roboto.space/" target="_blank" rel="noopener">hcvault.roboto.space</a></span>
+</header>
+
+<main>
+  <details class="panel" id="source" open>
+    <summary>Data source</summary>
+    <div style="margin-top:10px">
+      <b>One-time setup:</b> drag this button to your bookmarks bar:
+      <a id="bm" href="#" style="display:inline-block;padding:6px 12px;border:1px solid var(--accent);border-radius:6px;text-decoration:none;font-weight:600">Send vault to search</a>
+      <p class="meta">If you open this page from a local file (not from GitHub Pages) the bookmark copies the data instead: then come back here and <button id="clip" style="padding:3px 8px">Load from clipboard</button></p>
+      <p class="meta">Then open <a href="https://hcvault.roboto.space/" target="_blank" rel="noopener">the vault</a>, wait for the items to appear, and click the bookmark. This page opens with everything loaded, and it is remembered for next time. Allow popups if asked.</p>
+    </div>
+    <details><summary>Manual options</summary>
+    <div class="row" style="margin-top:10px">
+      <label style="flex:1;min-width:260px">Vault JSON endpoint URL
+        <input id="url" type="url" placeholder="https://hcvault.roboto.space/api/…">
+      </label>
+      <button class="primary" id="load">Load</button>
+    </div>
+    <p class="meta">Find the URL in your browser: open the vault, press F12, Network tab, filter by Fetch/XHR, reload, and copy the request that returns the item list. If the browser blocks it (CORS), paste the JSON below or upload a saved file instead.</p>
+    <div class="row">
+      <label style="flex:1;min-width:260px">Paste JSON
+        <textarea id="paste" placeholder='[{"name":"…","quality":"epic","requiredLevel":40,"type":"Weapon"}]'></textarea>
+      </label>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="usePaste">Use pasted JSON</button>
+      <button id="clear">Clear saved data</button>
+      <label>Or upload a .json file <input id="file" type="file" accept=".json,application/json"></label>
+    </div>
+    </details>
+    <div id="status"></div>
+    <div id="lvlbar"></div>
+    <details style="margin-top:10px"><summary>Field mapping (auto-detected, override if a column looks wrong)</summary>
+      <div class="maps" id="maps"></div>
+      <p class="meta">First raw item as received:</p><pre id="rawItem" style="white-space:pre-wrap;font-size:12px;color:var(--muted);margin:0"></pre>
+    </details>
+  </details>
+
+  <div class="panel" id="listpick" style="display:none">
+    <label>Which list from the vault page? <span class="meta" style="display:inline">(if the items look wrong, try another)</span>
+      <select id="listSel" style="max-width:100%"></select></label>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <label style="flex:2;min-width:220px">Search
+        <input id="q" type="search" placeholder="Item name…">
+      </label>
+      <label>Item type <select id="type"><option value="">All types</option></select></label>
+      <label>Min level <input id="lmin" type="number" min="0" placeholder="0"></label>
+      <label>Max level <input id="lmax" type="number" min="0" placeholder="80"></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div><div class="meta" style="margin:0 0 4px">Quality</div><div class="chips" id="qchips"></div></div>
+      <label>Sort by
+        <select id="sortBy">
+          <option value="reqLevel">Required level</option>
+          <option value="quality">Quality</option>
+          <option value="type">Item type</option>
+          <option value="name">Name</option>
+        </select>
+      </label>
+      <label>Direction
+        <select id="dir">
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </label>
+      <button id="reset">Reset</button>
+    </div>
+  </div>
+
+  <div class="meta" id="count"></div>
+  <table>
+    <thead><tr>
+      <th data-s="name">Item</th>
+      <th data-s="quality">Quality</th>
+      <th data-s="type" class="hide-m">Type</th>
+      <th data-s="reqLevel" class="num">Req. level</th>
+      <th data-s="count" class="num">Qty</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var QUALITIES = [
+    {id:0,name:"Poor",aliases:["poor","junk","gray","grey"]},
+    {id:1,name:"Common",aliases:["common","normal","white"]},
+    {id:2,name:"Uncommon",aliases:["uncommon","green"]},
+    {id:3,name:"Rare",aliases:["rare","blue"]},
+    {id:4,name:"Epic",aliases:["epic","purple"]},
+    {id:5,name:"Legendary",aliases:["legendary","orange"]},
+    {id:6,name:"Artifact",aliases:["artifact","heirloom"]}
+  ];
+  var CANDIDATES = {
+    name:["name","itemName","item_name","title","item","label"],
+    quality:["quality","rarity","itemQuality","item_quality","itemRarity","q"],
+    reqLevel:["requiredLevel","required_level","reqLevel","req_level","requiredlevel","minLevel","min_level","levelRequired","RequiredLevel","level"],
+    type:["type","itemType","item_type","itemClass","item_class","class","category","itemSubType","subtype","slot","inventoryType"],
+    count:["count","qty","quantity","stock","amount","stack","available"],
+    icon:["icon","iconUrl","icon_url","image","img"],
+    id:["id","itemId","item_id","entry","itemID"]
+  };
+  var FIELD_LABELS = {name:"Name",quality:"Quality",reqLevel:"Required level",type:"Item type",count:"Quantity",icon:"Icon",id:"Item ID"};
+
+  var $ = function(id){return document.getElementById(id)};
+  var raw = [], keys = [], map = {}, activeQ = {}, sortKey = "reqLevel";
+
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+  function status(msg,kind){ $("status").innerHTML = msg ? '<div class="msg '+(kind||"ok")+'">'+esc(msg)+'</div>' : ""; }
+
+  // find the array of items inside arbitrary JSON
+  function findArray(d,depth){
+    depth = depth||0;
+    if(Array.isArray(d)) return d;
+    if(d && typeof d==="object" && depth<3){
+      var best=null, k;
+      for(k in d){ var r=findArray(d[k],depth+1); if(r && (!best||r.length>best.length)) best=r; }
+      if(best) return best;
+      // object keyed by id -> values
+      var vals=Object.keys(d).map(function(x){return d[x]});
+      if(vals.length && vals.every(function(v){return v && typeof v==="object" && !Array.isArray(v)})) return vals;
+    }
+    return null;
+  }
+  function flatten(o){ // one level of nesting so item.stats.requiredLevel etc. can be found
+    var out={}, k;
+    for(k in o){
+      var v=o[k];
+      if(v && typeof v==="object" && !Array.isArray(v)){ for(var j in v){ if(!(j in o)) out[j]=v[j]; } }
+      out[k]=v;
+    }
+    return out;
+  }
+  function detect(sample){
+    var m={}, lower={}, k;
+    keys.forEach(function(x){lower[x.toLowerCase()]=x});
+    Object.keys(CANDIDATES).forEach(function(f){
+      m[f]="";
+      for(var i=0;i<CANDIDATES[f].length;i++){
+        var c=CANDIDATES[f][i].toLowerCase();
+        if(lower[c]){ m[f]=lower[c]; break; }
+      }
+    });
+    return m;
+  }
+  function qualityId(v){
+    if(v==null||v==="") return -1;
+    if(typeof v==="number") return v;
+    var s=String(v).trim().toLowerCase();
+    if(/^\d+$/.test(s)) return parseInt(s,10);
+    for(var i=0;i<QUALITIES.length;i++) if(QUALITIES[i].aliases.indexOf(s)>=0) return QUALITIES[i].id;
+    return -1;
+  }
+  function typeText(v){
+    if(v==null) return "";
+    if(Array.isArray(v)) return v.join(" / ");
+    if(typeof v==="object") return v.name||v.label||JSON.stringify(v);
+    return String(v);
+  }
+  function normalise(){
+    return raw.map(function(o,i){
+      var n = qualityId(o[map.quality]);
+      var lv = parseInt(o[map.reqLevel],10);
+      var cnt = parseInt(o[map.count],10);
+      var icon = o[map.icon];
+      return {
+        i:i,
+        name:String(o[map.name]!=null?(typeof o[map.name]==="object"?(o[map.name].name||""):o[map.name]):("Item "+(o[map.id]!=null?o[map.id]:i))),
+        q:n,
+        qName:n>=0 && QUALITIES[n]?QUALITIES[n].name:(o[map.quality]!=null?String(o[map.quality]):"Unknown"),
+        type:typeText(o[map.type]),
+        reqLevel:isNaN(lv)?0:lv,
+        count:isNaN(cnt)?null:cnt,
+        icon:typeof icon==="string"&&/^(https?:)?\/\//.test(icon)?icon:""
+      };
+    });
+  }
+
+  function buildMapUI(){
+    var html="";
+    Object.keys(FIELD_LABELS).forEach(function(f){
+      html+='<label>'+FIELD_LABELS[f]+'<select data-f="'+f+'"><option value="">(none)</option>'+
+        keys.map(function(k){return '<option'+(map[f]===k?' selected':'')+'>'+esc(k)+'</option>'}).join("")+'</select></label>';
+    });
+    $("maps").innerHTML=html;
+    Array.prototype.forEach.call($("maps").querySelectorAll("select"),function(s){
+      s.onchange=function(){ map[s.dataset.f]=s.value; refreshFilters(); render(); };
+    });
+  }
+  function buildQualityChips(items){
+    var present={};
+    items.forEach(function(x){present[x.q]=x.qName});
+    var ids=Object.keys(present).map(Number).sort(function(a,b){return a-b});
+    $("qchips").innerHTML=ids.map(function(id){
+      var col=id>=0?"var(--q"+id+")":"var(--muted)";
+      return '<span class="chip on" data-q="'+id+'" style="color:'+col+'">'+esc(present[id])+'</span>';
+    }).join("");
+    activeQ={}; ids.forEach(function(id){activeQ[id]=true});
+    Array.prototype.forEach.call($("qchips").children,function(c){
+      c.onclick=function(){
+        var id=c.dataset.q; activeQ[id]=!activeQ[id]; c.classList.toggle("on",activeQ[id]); render();
+      };
+    });
+  }
+  var items=[];
+  function refreshFilters(){
+    items=normalise();
+    var types={};
+    items.forEach(function(x){ if(x.type) types[x.type]=1; });
+    var cur=$("type").value;
+    $("type").innerHTML='<option value="">All types</option>'+Object.keys(types).sort().map(function(t){
+      return '<option'+(t===cur?' selected':'')+' value="'+esc(t)+'">'+esc(t)+'</option>';
+    }).join("");
+    buildQualityChips(items);
+  }
+
+  function render(){
+    var q=$("q").value.trim().toLowerCase();
+    var type=$("type").value;
+    var lmin=$("lmin").value===""?null:+$("lmin").value;
+    var lmax=$("lmax").value===""?null:+$("lmax").value;
+    var dir=$("dir").value==="desc"?-1:1;
+    var by=$("sortBy").value;
+    var terms=q?q.split(/\s+/):[];
+    var out=items.filter(function(x){
+      if(activeQ[x.q]===false) return false;
+      if(type && x.type!==type) return false;
+      if(lmin!==null && x.reqLevel<lmin) return false;
+      if(lmax!==null && x.reqLevel>lmax) return false;
+      if(terms.length){
+        var hay=(x.name+" "+x.type+" "+x.qName).toLowerCase();
+        for(var i=0;i<terms.length;i++) if(hay.indexOf(terms[i])<0) return false;
+      }
+      return true;
+    });
+    out.sort(function(a,b){
+      var c;
+      if(by==="reqLevel") c=a.reqLevel-b.reqLevel;
+      else if(by==="quality") c=a.q-b.q;
+      else if(by==="type") c=a.type.localeCompare(b.type);
+      else if(by==="count") c=(a.count||0)-(b.count||0);
+      else c=a.name.localeCompare(b.name);
+      if(c===0) c=a.reqLevel-b.reqLevel || a.name.localeCompare(b.name);
+      return c*dir;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("th[data-s]"),function(th){
+      th.classList.toggle("sorted",th.dataset.s===by);
+    });
+    $("count").textContent=out.length+" of "+items.length+" items";
+    var shown=out.slice(0,1000);
+    $("rows").innerHTML=shown.map(function(x){
+      var col=x.q>=0?"var(--q"+x.q+")":"var(--text)";
+      return '<tr><td>'+(x.icon?'<img class="icon" loading="lazy" src="'+esc(x.icon)+'" alt="">':'')+
+        '<span class="name" style="color:'+col+'">'+esc(x.name)+'</span></td>'+
+        '<td style="color:'+col+'">'+esc(x.qName)+'</td>'+
+        '<td class="hide-m">'+esc(x.type)+'</td>'+
+        '<td class="num">'+x.reqLevel+'</td>'+
+        '<td class="num">'+(x.count==null?"":x.count)+'</td></tr>';
+    }).join("");
+    if(out.length>shown.length) $("count").textContent+=" (showing first "+shown.length+")";
+  }
+
+  function ingest(data,label){
+    var arr=findArray(data);
+    if(!arr || !arr.length){ status("No list of items found in that JSON.","err"); return; }
+    raw=arr.map(function(o){ return (o && typeof o==="object")?flatten(o):{name:String(o)}; });
+    var ks={}; raw.slice(0,200).forEach(function(o){Object.keys(o).forEach(function(k){ks[k]=1})});
+    keys=Object.keys(ks);
+    map=detect();
+    applyLevels();
+    var missing=["name","quality","reqLevel","type"].filter(function(f){return !map[f]});
+    try{ $("rawItem").textContent = JSON.stringify(arr[0],null,1).slice(0,900); }catch(e){}
+    buildMapUI(); refreshFilters(); render();
+    status("Loaded "+raw.length+" items from "+label+"."+(missing.length?" Could not auto-detect: "+missing.map(function(f){return FIELD_LABELS[f]}).join(", ")+". Pick them under Field mapping.":""), missing.length?"err":"ok");
+    try{ localStorage.setItem("hcv_url",$("url").value); }catch(e){}
+  }
+
+  // ---- required levels: the vault has none, so look them up on Wowhead (WotLK) per item ID, cached in the browser
+  var LVL={}; try{ LVL=JSON.parse(localStorage.getItem("hcv_lvl")||"{}")||{}; }catch(e){}
+  function saveLvl(){ try{ localStorage.setItem("hcv_lvl",JSON.stringify(LVL)); }catch(e){} }
+  function applyLevels(){
+    var hasId=raw.length && raw[0].itemId!=null;
+    var bar=$("lvlbar");
+    if(!hasId){ bar.innerHTML=""; return; }
+    if(!map.reqLevel){
+      map.reqLevel="requiredLevel";
+      if(keys.indexOf("requiredLevel")<0) keys.push("requiredLevel");
+    }
+    if(map.reqLevel==="requiredLevel") raw.forEach(function(o){ if(LVL[o.itemId]!==undefined) o.requiredLevel=LVL[o.itemId]; });
+    var ids=uniqIds(), todo=ids.filter(function(i){return LVL[i]===undefined});
+    bar.innerHTML = todo.length
+      ? '<div class="msg ok">Required levels known for '+(ids.length-todo.length)+' of '+ids.length+' items. <button id="lvlgo" class="primary">Look up levels on Wowhead</button></div>'
+      : '';
+    var b=$("lvlgo"); if(b) b.onclick=lookupLevels;
+  }
+  function uniqIds(){ var s={},a=[]; raw.forEach(function(o){ if(o.itemId!=null && !s[o.itemId]){s[o.itemId]=1;a.push(o.itemId);} }); return a; }
+  function lookupLevels(){
+    var todo=uniqIds().filter(function(i){return LVL[i]===undefined}), total=todo.length, done=0, failed=0, stop=false;
+    var bar=$("lvlbar");
+    function paint(){ bar.innerHTML='<div class="msg ok">Looking up levels: '+done+' / '+total+(failed?' ('+failed+' failed)':'')+'</div>'; }
+    function flush(){ saveLvl(); raw.forEach(function(o){ if(LVL[o.itemId]!==undefined) o.requiredLevel=LVL[o.itemId]; }); refreshFilters(); render(); }
+    function one(id){
+      return fetch("https://nether.wowhead.com/wotlk/tooltip/item/"+id).then(function(r){
+        if(!r.ok) throw new Error("HTTP "+r.status); return r.json();
+      }).then(function(j){
+        var m=/Requires Level (\d+)/i.exec(String(j.tooltip||"").replace(/<[^>]+>/g," "));
+        LVL[id]=m?+m[1]:0;
+      });
+    }
+    function worker(){
+      if(stop||!todo.length) return Promise.resolve();
+      var id=todo.shift();
+      return one(id).then(function(){ done++; },function(e){
+        failed++; if(done===0&&failed>=3){ stop=true; bar.innerHTML='<div class="msg err">Could not reach Wowhead from this page ('+esc(e.message)+'). Most likely the browser blocked the request (CORS) or you are offline.</div>'; }
+      }).then(function(){ if(!stop){ if((done+failed)%40===0){ paint(); flush(); } } return worker(); });
+    }
+    paint();
+    var ws=[]; for(var i=0;i<6;i++) ws.push(worker());
+    Promise.all(ws).then(function(){ if(stop) return; flush(); applyLevels(); if(failed) bar.insertAdjacentHTML("beforeend",'<div class="msg err">'+failed+' lookups failed; press the button again to retry them.</div>'); });
+  }
+
+  function loadUrl(){
+    var u=$("url").value.trim(); if(!u) return;
+    status("Loading…");
+    fetch(u).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(d){ ingest(d,"the endpoint"); })
+      .catch(function(e){ status("Could not load the endpoint ("+e.message+"). Most likely the site blocks cross-origin requests (CORS). Paste the JSON or upload a saved file instead.","err"); });
+  }
+
+  $("clip").onclick=function(){
+    navigator.clipboard.readText().then(function(t){
+      var m; try{ m=JSON.parse(t); }catch(e){ status("The clipboard does not contain vault data. Click the bookmark on the vault page first.","err"); return; }
+      if(m&&m.lists){
+        loadLists(m.lists,"the clipboard");
+        try{ localStorage.setItem("hcv_lists",JSON.stringify(m.lists)); localStorage.setItem("hcv_when",new Date().toLocaleString()); }catch(x){}
+      } else { ingest((m&&m.hcv)?m.data:m,"the clipboard"); }
+      $("source").open=false;
+    },function(){ status("Clipboard access was blocked. Paste the data into the box under Manual options instead.","err"); });
+  };
+  $("clear").onclick=function(){ try{localStorage.removeItem("hcv_data");localStorage.removeItem("hcv_lists");localStorage.removeItem("hcv_sel");localStorage.removeItem("hcv_when");localStorage.removeItem("hcv_url");}catch(e){} status("Saved data cleared. Reload the page."); };
+  $("load").onclick=loadUrl;
+  $("url").addEventListener("keydown",function(e){ if(e.key==="Enter") loadUrl(); });
+  $("usePaste").onclick=function(){
+    try{
+      var pj=JSON.parse($("paste").value);
+      if(pj&&pj.lists&&Array.isArray(pj.lists)){
+        loadLists(pj.lists,"pasted JSON");
+        try{ localStorage.setItem("hcv_lists",JSON.stringify(pj.lists)); localStorage.setItem("hcv_when",new Date().toLocaleString()); }catch(x){}
+      } else ingest(pj,"pasted JSON");
+    }catch(e){ status("That isn't valid JSON: "+e.message,"err"); }
+  };
+  $("file").onchange=function(){
+    var f=this.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(){ try{ ingest(JSON.parse(r.result),f.name); }catch(e){ status("Invalid JSON in file: "+e.message,"err"); } };
+    r.readAsText(f);
+  };
+  ["q","type","lmin","lmax","sortBy","dir"].forEach(function(id){
+    $(id).addEventListener(id==="q"||id==="lmin"||id==="lmax"?"input":"change",render);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("th[data-s]"),function(th){
+    th.onclick=function(){
+      var s=th.dataset.s;
+      if($("sortBy").value===s){ $("dir").value=$("dir").value==="asc"?"desc":"asc"; }
+      else if(Array.prototype.some.call($("sortBy").options,function(o){return o.value===s})) $("sortBy").value=s;
+      else { var o=document.createElement("option"); o.value=s; o.textContent=th.textContent; $("sortBy").appendChild(o); $("sortBy").value=s; }
+      render();
+    };
+  });
+  $("reset").onclick=function(){
+    $("q").value="";$("type").value="";$("lmin").value="";$("lmax").value="";
+    $("sortBy").value="reqLevel";$("dir").value="asc";
+    Array.prototype.forEach.call($("qchips").children,function(c){c.classList.add("on");activeQ[c.dataset.q]=true});
+    render();
+  };
+
+  var LISTS=[];
+  function nameOf(r){
+    if(!r||typeof r!=="object") return String(r);
+    var k=CANDIDATES.name.filter(function(c){return c in r})[0], v=k?r[k]:null;
+    if(typeof v!=="string"){ var ks=Object.keys(r); for(var i=0;i<ks.length;i++){ if(typeof r[ks[i]]==="string"){v=r[ks[i]];break;} } }
+    return typeof v==="string"?v:"";
+  }
+  function useList(i,label){
+    ingest(LISTS[i].rows,label);
+    try{ localStorage.setItem("hcv_sel",String(i)); }catch(e){}
+  }
+  function loadLists(lists,label,sel){
+    // categories with an "entries" array (the vault's /api/vault shape) -> flat item list, category as type
+    var flat=[];
+    lists.forEach(function(l){
+      if(!l.rows||!l.rows.length||!Array.isArray(l.rows[0].entries)) return;
+      var rows=[];
+      l.rows.forEach(function(c){
+        (c.entries||[]).forEach(function(e){
+          var o={}; for(var k in e) o[k]=e[k];
+          o.type=c.name; o.icon=e.icon?"https://hcvault.roboto.space/icons/"+e.icon+".png":"";
+          rows.push(o);
+        });
+      });
+      flat.push({src:l.src+" (all items)",n:rows.length,rows:rows});
+    });
+    if(flat.length){ lists=flat.concat(lists.filter(function(l){return !(l.rows&&l.rows[0]&&Array.isArray(l.rows[0].entries))})); sel=0; }
+    LISTS=lists; sel=sel||0; if(sel>=lists.length) sel=0;
+    $("listSel").innerHTML=lists.map(function(l,i){
+      return '<option value="'+i+'">'+esc(l.src+" - "+l.n+" rows - e.g. "+l.rows.slice(0,3).map(nameOf).join(", "))+'</option>';
+    }).join("");
+    $("listSel").value=String(sel);
+    $("listpick").style.display=lists.length>1?"":"none";
+    useList(sel,label);
+  }
+  $("listSel").onchange=function(){ useList(+this.value,"the selected list"); };
+
+  // ---- bookmarklet: runs on the vault page, finds the item list among its own requests, sends it here
+  function bmMain(W){
+    var TYPE=/\b(Weapon|Armor|Consumable|Container|Quest|Trade Goods|Miscellaneous|Recipe|Gem|Projectile|Quiver|Reagent|Key|Cloth|Leather|Mail|Plate|Shield|Sword|Axe|Mace|Dagger|Staff|Bow|Gun|Crossbow|Wand|Polearm|Fist Weapon|Thrown|Potion|Elixir|Flask|Food|Bandage|Junk|Trinket|Ring|Neck|Cloak)\b/i;
+    var QCOL=[["Poor",157,157,157],["Common",255,255,255],["Uncommon",30,255,0],["Rare",0,112,221],["Epic",163,53,238],["Legendary",255,128,0]];
+    var lists=[], log=[], urls=[];
+    function isObj(x){return x&&typeof x==="object"&&!Array.isArray(x)}
+    function jsonScore(o){
+      var ks=Object.keys(o[0]), j=ks.join(" ").toLowerCase();
+      return o.length*(1+ks.length)*(/level|lvl/.test(j)?3:1)*(/quality|rarity/.test(j)?2:1);
+    }
+    function find(d,n,out){
+      if(Array.isArray(d)){
+        var o=d.filter(isObj);
+        if(o.length>=3)out.push({n:o.length,rows:o,s:jsonScore(o)});
+        return;
+      }
+      if(d&&typeof d==="object"&&n<4){
+        for(var key in d){ try{find(d[key],n+1,out)}catch(e){} }
+      }
+    }
+    function consider(d,src){
+      var out=[]; find(d,0,out);
+      out.forEach(function(x){x.src=src;lists.push(x)});
+    }
+    function colorQ(c){
+      var m=/rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c||""); if(!m)return "";
+      var b="",bd=1e9;
+      QCOL.forEach(function(q){var d=Math.abs(q[1]-m[1])+Math.abs(q[2]-m[2])+Math.abs(q[3]-m[3]); if(d<bd){bd=d;b=q[0]}});
+      return bd<90?b:"";
+    }
+    function textNodes(el){
+      var w=el.ownerDocument.createTreeWalker(el,4),out=[],n;
+      while((n=w.nextNode())){
+        var p=n.parentElement; if(!p||/^(SCRIPT|STYLE)$/.test(p.tagName))continue;
+        var t=n.nodeValue.replace(/\s+/g," ").trim(); if(t)out.push({t:t,p:p});
+      }
+      return out;
+    }
+    function rowObj(el,hdr){
+      var tn=textNodes(el); if(!tn.length)return null;
+      var lines=tn.map(function(x){return x.t});
+      var cls=(el.outerHTML.match(/class="[^"]*"/g)||[]).join(" ");
+      var qm=/\b(poor|common|uncommon|rare|epic|legendary|artifact)\b/i.exec(cls), q=qm?qm[1]:"";
+      if(!q){var m2=/\bq([0-5])\b|quality-?([0-5])\b/i.exec(cls); if(m2)q=m2[1]||m2[2];}
+      if(!q)q=colorQ(el.ownerDocument.defaultView.getComputedStyle(tn[0].p).color);
+      var all=lines.join(" | ");
+      var lv=/(?:requires?\s+level|req\.?\s*(?:level|lvl)?|level|lvl|lv\.?)\D{0,3}(\d{1,3})/i.exec(all);
+      var ty=TYPE.exec(all);
+      var ct=/(?:^|\s)[x×]\s?(\d+)\b|\b(\d+)\s?[x×](?=\s|$)/.exec(all);
+      var im=el.querySelector("img");
+      var o={name:lines[0],quality:q,reqLevel:lv?+lv[1]:0,type:ty?ty[1]:"",count:ct?+(ct[1]||ct[2]):"",icon:im?im.src:"",text:all};
+      if(hdr){
+        var tds=el.querySelectorAll("td");
+        for(var i=0;i<tds.length;i++){var h=hdr[i]; if(h&&(!(h in o)||o[h]===""))o[h]=tds[i].textContent.trim();}
+        var lh=o.level||o.lvl||o["req level"]||o["required level"]||o["req. level"]||o["req lvl"];
+        if(lh&&/\d/.test(lh))o.reqLevel=+/\d+/.exec(lh)[0];
+      }
+      return o;
+    }
+    function domLists(doc,min){
+      doc=doc||document; min=min||5;
+      var groups=[];
+      [doc.body].concat([].slice.call(doc.body.querySelectorAll("*"))).forEach(function(p){
+        var ch=p.children; if(ch.length<min)return;
+        var g={},i,sig;
+        for(i=0;i<ch.length;i++){sig=ch[i].tagName+"."+ch[i].className; (g[sig]=g[sig]||[]).push(ch[i]);}
+        for(sig in g){var a=g[sig]; if(a.length>=min&&a[0].textContent.trim().length>1)groups.push(a);}
+      });
+      groups.sort(function(a,b){return b.length-a.length});
+      var out=[];
+      groups.slice(0,8).forEach(function(a){
+        var hdr=null;
+        if(a[0].tagName==="TR"){var t=a[0].closest("table"); if(t)hdr=[].map.call(t.querySelectorAll("th"),function(h){return h.textContent.trim().toLowerCase()});}
+        var rows=[],kept=[],lines=0,img=0,lvl=0,q=0;
+        a.forEach(function(el){
+          if(el.querySelector("th")&&!el.querySelector("td"))return;
+          var o=rowObj(el,hdr); if(!o)return;
+          rows.push(o); kept.push(el); lines+=o.text.split(" | ").length;
+          if(o.icon)img++; if(o.reqLevel)lvl++; if(o.quality)q++;
+        });
+        if(rows.length<Math.min(3,min))return;
+        var s=rows.length*(1+lines/rows.length)*(img?2:1)*(lvl?3:1)*(q?2:1);
+        var links=kept.map(function(el){
+          var an=el.tagName==="A"?el:el.querySelector("a[href]"), hr=an&&an.getAttribute("href");
+          return hr&&hr.trim()!=="#"&&!/^javascript:/i.test(hr.trim())?an.href:null;
+        });
+        out.push({n:rows.length,rows:rows,s:s,
+          cat:rows.length>=5&&!lvl&&!q&&!img&&lines/rows.length<=2.2,
+          links:links,names:rows.map(function(r){return r.name}),sample:kept[0].outerHTML.slice(0,700),
+          src:"page ("+a[0].tagName.toLowerCase()+(a[0].className?"."+String(a[0].className).split(" ")[0]:"")+")"});
+      });
+      return out;
+    }
+    function crawl(best){
+      var names={}; best.names.forEach(function(n){names[n]=1});
+      var jobs=[]; best.links.forEach(function(h,i){ if(h)jobs.push({href:h,name:best.names[i]}); });
+      var all=[],fails=0,done=0,next=0;
+      var ui=document.createElement("div");
+      ui.style.cssText="position:fixed;z-index:2147483647;top:10px;right:10px;background:#111;color:#fff;padding:10px 14px;border-radius:8px;font:14px sans-serif;box-shadow:0 2px 12px #000a";
+      document.body.appendChild(ui);
+      function upd(){ui.textContent="Collecting items: "+done+" / "+jobs.length+" categories ("+all.length+" items)";}
+      upd();
+      function load(job){
+        return new Promise(function(res){
+          var f=document.createElement("iframe"), t0=Date.now(), last=-1, stable=0, lastRows=null, over=false, iv;
+          f.style.cssText="position:fixed;left:-9999px;top:0;width:1280px;height:900px;border:0";
+          function fin(v){ if(over)return; over=true; clearInterval(iv); try{f.remove()}catch(e){} res(v); }
+          f.src=job.href; document.body.appendChild(f);
+          iv=setInterval(function(){
+            var d=null; try{d=f.contentDocument}catch(e){}
+            if(!d||!d.body){ if(Date.now()-t0>4000)fin(null); return; }
+            var rows=null;
+            try{
+              var ls=domLists(d,3).filter(function(x){
+                var ov=x.names.filter(function(n){return names[n]}).length; return ov<x.n*0.6;
+              }).sort(function(a,b){return b.s-a.s});
+              rows=ls[0]?ls[0].rows:null;
+            }catch(e){}
+            if(rows){ lastRows=rows; if(rows.length===last)stable++; else{last=rows.length;stable=0;} if(stable>=2)fin(rows); }
+            else if(Date.now()-t0>8000)fin(null);
+            if(Date.now()-t0>20000)fin(lastRows);
+          },400);
+        });
+      }
+      function worker(){
+        if(next>=jobs.length)return Promise.resolve();
+        var job=jobs[next++];
+        return load(job).then(function(rows){
+          if(rows){ rows.forEach(function(r){ r.category=job.name; r.type=job.name; all.push(r); }); } else fails++;
+          done++; upd(); return worker();
+        });
+      }
+      return Promise.all([worker(),worker(),worker(),worker()]).then(function(){ ui.remove(); return {rows:all,fails:fails,cats:jobs.length}; });
+    }
+    function send(payload){
+      if(!/^https?:/.test(W)){
+        var txt=JSON.stringify({hcv:1,lists:payload});
+        navigator.clipboard.writeText(txt).then(function(){
+          alert("Copied the vault data ("+payload.length+" candidate lists). Go to your search page and press Load from clipboard.");
+        },function(){ alert("Could not copy to the clipboard. Allow clipboard access and try again."); });
+        return;
+      }
+      var o=new URL(W).origin, w=window.open(W);
+      if(!w){alert("Popup blocked. Allow popups for this site and click the bookmark again.");return;}
+      var t=setInterval(function(){w.postMessage({hcv:1,lists:payload},o)},400);
+      window.addEventListener("message",function(e){if(e.data&&e.data.hcvAck)clearInterval(t)});
+      setTimeout(function(){clearInterval(t)},15000);
+    }
+    if(location.protocol==="file:"||document.title==="HC Vault Search"){
+      alert("This is the search page. Open the vault (hcvault.roboto.space), wait until the items show, then click the bookmark there.");
+      return;
+    }
+    return (async function(){
+      var inl=0;
+      [].forEach.call(document.querySelectorAll("script[type='application/json'],script#__NEXT_DATA__,script[type='application/ld+json']"),function(s){inl++;try{consider(JSON.parse(s.textContent),"inline json")}catch(e){}});
+      Object.keys(window).forEach(function(k){
+        if(!/^__|data|state|items|store|vault/i.test(k))return;
+        try{var v=window[k]; if(v&&typeof v==="object"&&v!==window)consider(v,"window."+k)}catch(e){}
+      });
+      var seen={};
+      performance.getEntriesByType("resource").forEach(function(e){
+        if((e.initiatorType==="fetch"||e.initiatorType==="xmlhttprequest"||/\.json(\?|$)/.test(e.name))&&!seen[e.name]){seen[e.name]=1;urls.push(e.name);}
+      });
+      for(var i=0;i<urls.length;i++){
+        var ok=false;
+        for(var c=0;c<2&&!ok;c++){
+          try{
+            var r=await fetch(urls[i],{credentials:c?"include":"same-origin"});
+            if(!r.ok){log.push(r.status+" "+urls[i]);continue;}
+            var d=await r.json(); ok=true;
+            log.push("ok "+urls[i]);
+            consider(d,urls[i].replace(/^https?:\/\/[^\/]+/,""));
+          }catch(e){log.push("err "+(e&&e.message)+" "+urls[i]);}
+        }
+      }
+      try{domLists().forEach(function(x){lists.push(x)})}catch(e){log.push("dom err "+(e&&e.message))}
+      lists.sort(function(a,b){return b.s-a.s});
+      var best=lists[0];
+      if(best&&best.cat){
+        var linked=(best.links||[]).filter(Boolean).length;
+        if(linked>=best.n*0.6){
+          var res=await crawl(best);
+          if(res.rows.length){
+            lists.unshift({src:"items from "+(res.cats-res.fails)+" categories"+(res.fails?" ("+res.fails+" had no items found)":""),n:res.rows.length,rows:res.rows,s:1e12});
+          } else {
+            var d1="Vault bookmarklet: category pages gave no items\nPage: "+location.href+"\nCategories: "+best.n+" (e.g. "+best.names.slice(0,3).join(", ")+")\nFirst link: "+best.links.filter(Boolean)[0]+"\nRow HTML: "+best.sample;
+            try{navigator.clipboard.writeText(d1)}catch(e){}
+            prompt("Found categories but no items inside them. Diagnostics (copy and send to Claude):",d1.slice(0,1800)); return;
+          }
+        } else {
+          var d2="Vault bookmarklet: category list without links\nPage: "+location.href+"\nCategories: "+best.n+" (e.g. "+best.names.slice(0,3).join(", ")+")\nRow HTML: "+best.sample;
+          try{navigator.clipboard.writeText(d2)}catch(e){}
+          prompt("This page lists categories but they are not links. Diagnostics (copy and send to Claude):",d2.slice(0,1800)); return;
+        }
+      }
+      var top=lists.slice(0,6).map(function(x){return {src:x.src,n:x.n,rows:x.rows}});
+      if(top.length){send(top);return;}
+      var diag="Vault bookmarklet diagnostics\nPage: "+location.href+"\nFetch/XHR requests: "+urls.length+"\n"+urls.slice(0,12).join("\n")+"\nResults:\n"+log.slice(0,12).join("\n")+"\nInline JSON scripts: "+inl+"\nBody text: "+(document.body.innerText||document.body.textContent||"").replace(/\s+/g," ").slice(0,300);
+      try{navigator.clipboard.writeText(diag)}catch(e){}
+      prompt("Nothing found. Diagnostics (copy with Ctrl+C and send them to Claude):",diag.slice(0,1800));
+    })();
+  }
+  try{
+    var here = location.origin + location.pathname;
+    $("bm").href = "javascript:" + encodeURIComponent("(" + bmMain.toString() + ")(" + JSON.stringify(here) + ")");
+    $("bm").onclick = function(e){ e.preventDefault(); alert("Drag this button to your bookmarks bar instead of clicking it."); };
+  }catch(e){}
+
+  var got = false;
+  window.addEventListener("message", function(e){
+    if(e.origin !== "https://hcvault.roboto.space") return;
+    var m = e.data; if(!m || !m.hcv) return;
+    try{ e.source.postMessage({hcvAck:1}, e.origin); }catch(x){}
+    if(got) return; got = true;
+    if(m.lists){
+      loadLists(m.lists, "the vault page");
+      try{
+        localStorage.setItem("hcv_lists", JSON.stringify(m.lists));
+        localStorage.setItem("hcv_when", new Date().toLocaleString());
+      }catch(x){}
+    }
+    $("source").open = false;
+  });
+
+  // startup: ?src=<url>, else last bookmarklet import, else remembered endpoint
+  try{
+    var p = new URLSearchParams(location.search).get("src");
+    var cached = localStorage.getItem("hcv_lists");
+    if(p){ $("url").value=p; loadUrl(); }
+    else if(cached){
+      loadLists(JSON.parse(cached), "your last import ("+(localStorage.getItem("hcv_when")||"earlier")+"). Click the bookmark on the vault page to refresh", +(localStorage.getItem("hcv_sel")||0));
+      $("source").open = false;
+    } else {
+      var u = localStorage.getItem("hcv_url");
+      if(u){ $("url").value=u; loadUrl(); }
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
