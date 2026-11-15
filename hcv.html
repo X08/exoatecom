@@ -80,13 +80,13 @@
     </div>
     </details>
     <div id="status"></div>
-    <div id="lvlbar"></div>
     <details style="margin-top:10px"><summary>Field mapping (auto-detected, override if a column looks wrong)</summary>
       <div class="maps" id="maps"></div>
       <p class="meta">First raw item as received:</p><pre id="rawItem" style="white-space:pre-wrap;font-size:12px;color:var(--muted);margin:0"></pre>
     </details>
   </details>
 
+  <div id="lvlbar" style="margin:10px 0"></div>
   <div class="panel" id="listpick" style="display:none">
     <label>Which list from the vault page? <span class="meta" style="display:inline">(if the items look wrong, try another)</span>
       <select id="listSel" style="max-width:100%"></select></label>
@@ -358,7 +358,7 @@
       return fetch("https://nether.wowhead.com/wotlk/tooltip/item/"+id).then(function(r){
         if(!r.ok) throw new Error("HTTP "+r.status); return r.json();
       }).then(function(j){
-        var m=/Requires Level (\d+)/i.exec(String(j.tooltip||"").replace(/<[^>]+>/g," "));
+        var m=/Requires\s+Level\s*(\d+)/i.exec(String(j.tooltip||"").replace(/<[^>]+>/g," ").replace(/&nbsp;|\u00a0/g," "));
         LVL[id]=m?+m[1]:0;
       });
     }
