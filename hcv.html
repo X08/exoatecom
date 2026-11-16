@@ -42,6 +42,15 @@
   .msg.err{background:#2a1517;border:1px solid #5a2a2e}
   .msg.ok{background:#12251a;border:1px solid #28523a}
   .maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-top:10px}
+  .tip{position:fixed;display:none;z-index:50;max-width:360px;background:#0c0f16;border:1px solid #3a4256;border-radius:6px;padding:8px 10px;pointer-events:none;font-size:13px;line-height:1.4;box-shadow:0 6px 24px #000a}
+  .tip table{width:auto;border-collapse:collapse} .tip td,.tip th{border:0;padding:0 0 0 12px;font-size:13px;font-weight:400;color:inherit;cursor:default;text-align:left;white-space:normal}
+  .tip td:first-child{padding-left:0} .tip th{text-align:right}
+  .tip b{font-weight:600} .tip .q{color:#ffd100}
+  .tip .q0{color:var(--q0)} .tip .q1{color:var(--q1)} .tip .q2{color:var(--q2)} .tip .q3{color:var(--q3)} .tip .q4{color:var(--q4)} .tip .q5{color:var(--q5)} .tip .q6{color:var(--q6)}
+  a.name{text-decoration:none} a.name:hover{text-decoration:underline}
+  td.stats{color:var(--muted);font-size:12px}
+  #toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  #lvlbar pre{white-space:pre-wrap;font-size:11px;color:var(--muted);margin:6px 0 0;word-break:break-all}
   @media (max-width:640px){ th.hide-m,td.hide-m{display:none} }
 </style>
 </head>
@@ -86,7 +95,12 @@
     </details>
   </details>
 
-  <div id="lvlbar" style="margin:10px 0"></div>
+  <div id="lvlbar"></div>
+  <div id="toolbar">
+    <button id="purgeInfo" title="Forget fetched levels, stats and tooltips (keeps the vault list)">Purge item data</button>
+    <button id="purgeAll" title="Forget everything saved by this page and reload">Purge everything &amp; reload</button>
+  </div>
+  <div id="tip" class="tip"></div>
   <div class="panel" id="listpick" style="display:none">
     <label>Which list from the vault page? <span class="meta" style="display:inline">(if the items look wrong, try another)</span>
       <select id="listSel" style="max-width:100%"></select></label>
@@ -106,6 +120,7 @@
       <label>Sort by
         <select id="sortBy">
           <option value="reqLevel">Required level</option>
+          <option value="ilvl">Item level</option>
           <option value="quality">Quality</option>
           <option value="type">Item type</option>
           <option value="name">Name</option>
@@ -119,6 +134,12 @@
       </label>
       <button id="reset">Reset</button>
     </div>
+    <div class="row" style="margin-top:10px">
+      <label>Stat <select id="statSel"><option value="">(fetch item data first)</option></select></label>
+      <label>At least <input id="statMin" type="number" placeholder="1"></label>
+      <button id="statAdd">Add stat filter</button>
+      <div class="chips" id="statChips"></div>
+    </div>
   </div>
 
   <div class="meta" id="count"></div>
@@ -128,6 +149,8 @@
       <th data-s="quality">Quality</th>
       <th data-s="type" class="hide-m">Type</th>
       <th data-s="reqLevel" class="num">Req. level</th>
+      <th data-s="ilvl" class="num hide-m">iLvl</th>
+      <th class="hide-m">Stats (hover an item for its tooltip)</th>
       <th data-s="count" class="num">Qty</th>
     </tr></thead>
     <tbody id="rows"></tbody>
@@ -212,19 +235,25 @@
     if(typeof v==="object") return v.name||v.label||JSON.stringify(v);
     return String(v);
   }
+  var ABBR={strength:"Str",agility:"Agi",stamina:"Sta",intellect:"Int",spirit:"Spi"};
+  function statText(st){ return Object.keys(st).map(function(k){ return (ABBR[k]||k)+" "+st[k]; }).join(" · "); }
   function normalise(){
     return raw.map(function(o,i){
       var n = qualityId(o[map.quality]);
       var lv = parseInt(o[map.reqLevel],10);
       var cnt = parseInt(o[map.count],10);
       var icon = o[map.icon];
+      var id = o.itemId!=null?o.itemId:null, key = id!=null?id+":"+(o.suffixId||0):null, rec = key?INFO[key]:null;
+      var st = rec?rec.st:{};
       return {
-        i:i,
+        i:i, id:id, key:key,
         name:String(o[map.name]!=null?(typeof o[map.name]==="object"?(o[map.name].name||""):o[map.name]):("Item "+(o[map.id]!=null?o[map.id]:i))),
         q:n,
         qName:n>=0 && QUALITIES[n]?QUALITIES[n].name:(o[map.quality]!=null?String(o[map.quality]):"Unknown"),
         type:typeText(o[map.type]),
-        reqLevel:isNaN(lv)?0:lv,
+        reqLevel:rec&&rec.lvl!=null?rec.lvl:(isNaN(lv)?0:lv),
+        ilvl:rec?(rec.ilvl||0):0,
+        st:st, statText:statText(st), statKeys:Object.keys(st).join(" "),
         count:isNaN(cnt)?null:cnt,
         icon:typeof icon==="string"&&/^(https?:)?\/\//.test(icon)?icon:""
       };
@@ -282,8 +311,9 @@
       if(type && x.type!==type) return false;
       if(lmin!==null && x.reqLevel<lmin) return false;
       if(lmax!==null && x.reqLevel>lmax) return false;
+      for(var f=0;f<statFilters.length;f++) if((x.st[statFilters[f].k]||0)<statFilters[f].min) return false;
       if(terms.length){
-        var hay=(x.name+" "+x.type+" "+x.qName).toLowerCase();
+        var hay=(x.name+" "+x.type+" "+x.qName+" "+x.statKeys).toLowerCase();
         for(var i=0;i<terms.length;i++) if(hay.indexOf(terms[i])<0) return false;
       }
       return true;
@@ -291,6 +321,8 @@
     out.sort(function(a,b){
       var c;
       if(by==="reqLevel") c=a.reqLevel-b.reqLevel;
+      else if(by==="ilvl") c=a.ilvl-b.ilvl;
+      else if(by.indexOf("st:")===0) c=(a.st[by.slice(3)]||0)-(b.st[by.slice(3)]||0);
       else if(by==="quality") c=a.q-b.q;
       else if(by==="type") c=a.type.localeCompare(b.type);
       else if(by==="count") c=(a.count||0)-(b.count||0);
@@ -305,11 +337,15 @@
     var shown=out.slice(0,1000);
     $("rows").innerHTML=shown.map(function(x){
       var col=x.q>=0?"var(--q"+x.q+")":"var(--text)";
-      return '<tr><td>'+(x.icon?'<img class="icon" loading="lazy" src="'+esc(x.icon)+'" alt="">':'')+
-        '<span class="name" style="color:'+col+'">'+esc(x.name)+'</span></td>'+
+      var nm=x.id!=null
+        ? '<a class="name" style="color:'+col+'" target="_blank" rel="noopener" href="https://www.wowhead.com/wotlk/item='+x.id+'">'+esc(x.name)+'</a>'
+        : '<span class="name" style="color:'+col+'">'+esc(x.name)+'</span>';
+      return '<tr data-k="'+esc(x.key||"")+'"><td>'+(x.icon?'<img class="icon" loading="lazy" src="'+esc(x.icon)+'" alt="">':'')+nm+'</td>'+
         '<td style="color:'+col+'">'+esc(x.qName)+'</td>'+
         '<td class="hide-m">'+esc(x.type)+'</td>'+
         '<td class="num">'+x.reqLevel+'</td>'+
+        '<td class="num hide-m">'+(x.ilvl||"")+'</td>'+
+        '<td class="stats hide-m">'+esc(x.statText)+'</td>'+
         '<td class="num">'+(x.count==null?"":x.count)+'</td></tr>';
     }).join("");
     if(out.length>shown.length) $("count").textContent+=" (showing first "+shown.length+")";
@@ -322,57 +358,176 @@
     var ks={}; raw.slice(0,200).forEach(function(o){Object.keys(o).forEach(function(k){ks[k]=1})});
     keys=Object.keys(ks);
     map=detect();
-    applyLevels();
-    var missing=["name","quality","reqLevel","type"].filter(function(f){return !map[f]});
+    var missing=["name","quality","type"].concat(raw[0]&&raw[0].itemId!=null?[]:["reqLevel"]).filter(function(f){return !map[f]});
     try{ $("rawItem").textContent = JSON.stringify(arr[0],null,1).slice(0,900); }catch(e){}
-    buildMapUI(); refreshFilters(); render();
+    buildMapUI(); refreshFilters(); buildStatUI(); render(); updateBar();
     status("Loaded "+raw.length+" items from "+label+"."+(missing.length?" Could not auto-detect: "+missing.map(function(f){return FIELD_LABELS[f]}).join(", ")+". Pick them under Field mapping.":""), missing.length?"err":"ok");
     try{ localStorage.setItem("hcv_url",$("url").value); }catch(e){}
   }
 
-  // ---- required levels: the vault has none, so look them up on Wowhead (WotLK) per item ID, cached in the browser
-  var LVL={}; try{ LVL=JSON.parse(localStorage.getItem("hcv_lvl")||"{}")||{}; }catch(e){}
-  function saveLvl(){ try{ localStorage.setItem("hcv_lvl",JSON.stringify(LVL)); }catch(e){} }
-  function applyLevels(){
-    var hasId=raw.length && raw[0].itemId!=null;
-    var bar=$("lvlbar");
-    if(!hasId){ bar.innerHTML=""; return; }
-    if(!map.reqLevel){
-      map.reqLevel="requiredLevel";
-      if(keys.indexOf("requiredLevel")<0) keys.push("requiredLevel");
-    }
-    if(map.reqLevel==="requiredLevel") raw.forEach(function(o){ if(LVL[o.itemId]!==undefined) o.requiredLevel=LVL[o.itemId]; });
-    var ids=uniqIds(), todo=ids.filter(function(i){return LVL[i]===undefined});
-    bar.innerHTML = todo.length
-      ? '<div class="msg ok">Required levels known for '+(ids.length-todo.length)+' of '+ids.length+' items. <button id="lvlgo" class="primary">Look up levels on Wowhead</button></div>'
-      : '';
-    var b=$("lvlgo"); if(b) b.onclick=lookupLevels;
+  // ---- Wowhead item data (WotLK): level, item level, stats and tooltip per item, fetched once and kept in IndexedDB
+  var INFO={}, SAMPLE="", lastErr="", fetching=false, stopFlag=false, statFilters=[];
+  var dbp=null;
+  function idb(){
+    return dbp||(dbp=new Promise(function(res){
+      try{ var r=indexedDB.open("hcv",1);
+        r.onupgradeneeded=function(){ r.result.createObjectStore("info",{keyPath:"key"}); };
+        r.onsuccess=function(){res(r.result)}; r.onerror=function(){res(null)}; r.onblocked=function(){res(null)};
+      }catch(e){ res(null); }
+    }));
   }
-  function uniqIds(){ var s={},a=[]; raw.forEach(function(o){ if(o.itemId!=null && !s[o.itemId]){s[o.itemId]=1;a.push(o.itemId);} }); return a; }
-  function lookupLevels(){
-    var todo=uniqIds().filter(function(i){return LVL[i]===undefined}), total=todo.length, done=0, failed=0, stop=false;
+  function idbAll(){ return idb().then(function(d){ if(!d) return []; return new Promise(function(res){ try{ var q=d.transaction("info").objectStore("info").getAll(); q.onsuccess=function(){res(q.result||[])}; q.onerror=function(){res([])}; }catch(e){res([])} }); }); }
+  function idbPut(recs){ return idb().then(function(d){ if(!d||!recs.length) return; return new Promise(function(res){ try{ var t=d.transaction("info","readwrite"),st=t.objectStore("info"); recs.forEach(function(r){st.put(r)}); t.oncomplete=t.onerror=t.onabort=function(){res()}; }catch(e){res()} }); }); }
+  function idbClear(){ return idb().then(function(d){ if(!d) return; return new Promise(function(res){ try{ var t=d.transaction("info","readwrite"); t.objectStore("info").clear(); t.oncomplete=t.onerror=t.onabort=function(){res()}; }catch(e){res()} }); }); }
+
+  function plainTip(html){
+    return String(html).replace(/<!--[\s\S]*?-->/g,"").replace(/<\/(tr|p|div)>|<br\s*\/?>/gi,"\n").replace(/<\/(td|th)>/gi," ").replace(/<[^>]+>/g,"")
+      .replace(/&nbsp;| /g," ").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;|&#x27;/g,"'").replace(/&amp;/g,"&");
+  }
+  function parseTip(html){
+    var t=plainTip(html), st={}, out={lvl:0,ilvl:0,st:st};
+    function add(k,n){ st[k]=(st[k]||0)+n; }
+    var m=/Requires\s+Level\s*(\d+)/i.exec(t); if(m) out.lvl=+m[1];
+    m=/Item\s+Level\s*(\d+)/i.exec(t); if(m) out.ilvl=+m[1];
+    t.split("\n").forEach(function(line){
+      line=line.replace(/\s+/g," ").trim(); if(!line) return;
+      var m;
+      if((m=/^\+(\d+)\s+(Strength|Agility|Stamina|Intellect|Spirit)\b/i.exec(line))) add(m[2].toLowerCase(),+m[1]);
+      else if((m=/^\+(\d+)\s+(Arcane|Fire|Frost|Nature|Shadow|Holy)\s+Resistance/i.exec(line))) add(m[2].toLowerCase()+" resistance",+m[1]);
+      else if((m=/^\+?(\d+)\s+Armor\b/i.exec(line))) add("armor",+m[1]);
+      else if((m=/^(\d+)\s+Block\b/i.exec(line))) add("block",+m[1]);
+      else if((m=/\(([\d.]+)\s+damage per second\)/i.exec(line))) st.dps=+m[1];
+      else if(/^Equip:/i.test(line)){
+        var e=line.replace(/^Equip:\s*/i,"");
+        if((m=/damage and healing done by magical spells and effects by up to (\d+)/i.exec(e))) add("spell power",+m[1]);
+        else if((m=/healing done by spells and effects by up to (\d+)/i.exec(e))) add("healing power",+m[1]);
+        else if((m=/block value of your shield by (\d+)/i.exec(e))) add("block value",+m[1]);
+        else if((m=/Restores (\d+) mana per 5 sec/i.exec(e))) add("mp5",+m[1]);
+        else if((m=/(?:Increases|Improves)\s+(?:your\s+)?(.+?)\s+by\s+(?:up to\s+)?(\d+)/i.exec(e))) add(m[1].toLowerCase().replace(/^the\s+/,""),+m[2]);
+      }
+    });
+    return out;
+  }
+  function fetchInfo(it){
+    var base="https://nether.wowhead.com/wotlk/tooltip/item/"+it.id;
+    function get(u){ return fetch(u).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }); }
+    var first=it.suffix?get(base+"?rand="+it.suffix).catch(function(){ return get(base); }):get(base);
+    return first.then(function(j){
+      if(!j||typeof j.tooltip!=="string"||j.tooltip.length<20) throw new Error("unexpected response");
+      if(!SAMPLE) SAMPLE=JSON.stringify(j).slice(0,1500);
+      var p=parseTip(j.tooltip), rec={key:it.id+":"+(it.suffix||0),lvl:p.lvl,ilvl:p.ilvl,st:p.st,tip:j.tooltip,at:Date.now()};
+      INFO[rec.key]=rec; return rec;
+    });
+  }
+  function allItems(){ var s={},a=[]; raw.forEach(function(o){ if(o.itemId==null) return; var k=o.itemId+":"+(o.suffixId||0); if(!s[k]){s[k]=1;a.push({id:o.itemId,suffix:o.suffixId||0,key:k});} }); return a; }
+  function todoItems(){ return allItems().filter(function(x){return !INFO[x.key]}); }
+
+  function buildStatUI(){
+    var ks={}; Object.keys(INFO).forEach(function(k){ Object.keys(INFO[k].st).forEach(function(s){ks[s]=(ks[s]||0)+1}); });
+    var names=Object.keys(ks).sort();
+    var cur=$("statSel").value;
+    $("statSel").innerHTML=names.length?names.map(function(n){return '<option value="'+esc(n)+'"'+(n===cur?' selected':'')+'>'+esc(n)+' ('+ks[n]+')</option>'}).join(""):'<option value="">(fetch item data first)</option>';
+    var sb=$("sortBy"), sel=sb.value;
+    Array.prototype.slice.call(sb.querySelectorAll("option[data-dyn]")).forEach(function(o){o.remove()});
+    names.forEach(function(n){ var o=document.createElement("option"); o.value="st:"+n; o.textContent="Stat: "+n; o.setAttribute("data-dyn","1"); sb.appendChild(o); });
+    sb.value=sel;
+    $("statChips").innerHTML=statFilters.map(function(f,i){ return '<span class="chip on" data-i="'+i+'" title="remove">'+esc(f.k)+' ≥ '+f.min+' ✕</span>'; }).join("");
+    Array.prototype.forEach.call($("statChips").children,function(c){ c.onclick=function(){ statFilters.splice(+c.dataset.i,1); buildStatUI(); render(); }; });
+  }
+  $("statAdd").onclick=function(){
+    var k=$("statSel").value; if(!k) return;
+    var v=$("statMin").value; statFilters.push({k:k,min:v===""?1:+v}); buildStatUI(); render();
+  };
+  function infoRefresh(){ items=normalise(); buildStatUI(); render(); updateBar(); }
+
+  function updateBar(){
+    var bar=$("lvlbar"); if(fetching) return;
+    var all=allItems(); if(!all.length){ bar.innerHTML=""; return; }
+    var todo=todoItems(), h='';
+    h+='<div class="msg '+(lastErr&&todo.length?'err':'ok')+'">Item data from Wowhead (level, item level, stats, tooltip): '+(all.length-todo.length)+' of '+all.length+' fetched. '+
+       (todo.length?'<button id="lvlgo" class="primary">Fetch '+(todo.length===all.length?'item data':'the remaining '+todo.length)+'</button>':'')+
+       (lastErr?' <span class="meta">Last error: '+esc(lastErr)+'</span>':'')+'</div>';
+    if(SAMPLE) h+='<details style="margin-top:6px"><summary>Sample Wowhead response (for debugging)</summary><pre>'+esc(SAMPLE)+'</pre></details>';
+    bar.innerHTML=h;
+    var b=$("lvlgo"); if(b) b.onclick=runFetch;
+  }
+  function runFetch(){
+    var todo=todoItems(), total=todo.length, done=0, failed=0, buf=[];
+    fetching=true; stopFlag=false; lastErr="";
     var bar=$("lvlbar");
-    function paint(){ bar.innerHTML='<div class="msg ok">Looking up levels: '+done+' / '+total+(failed?' ('+failed+' failed)':'')+'</div>'; }
-    function flush(){ saveLvl(); raw.forEach(function(o){ if(LVL[o.itemId]!==undefined) o.requiredLevel=LVL[o.itemId]; }); refreshFilters(); render(); }
-    function one(id){
-      return fetch("https://nether.wowhead.com/wotlk/tooltip/item/"+id).then(function(r){
-        if(!r.ok) throw new Error("HTTP "+r.status); return r.json();
-      }).then(function(j){
-        var m=/Requires\s+Level\s*(\d+)/i.exec(String(j.tooltip||"").replace(/<[^>]+>/g," ").replace(/&nbsp;|\u00a0/g," "));
-        LVL[id]=m?+m[1]:0;
-      });
+    function paint(){
+      bar.innerHTML='<div class="msg ok">Fetching from Wowhead: '+done+' / '+total+(failed?' ('+failed+' failed)':'')+' <button id="lvlstop">Stop</button></div>';
+      $("lvlstop").onclick=function(){ stopFlag=true; };
     }
+    function flush(){ var b=buf.splice(0); idbPut(b); items=normalise(); buildStatUI(); render(); }
     function worker(){
-      if(stop||!todo.length) return Promise.resolve();
-      var id=todo.shift();
-      return one(id).then(function(){ done++; },function(e){
-        failed++; if(done===0&&failed>=3){ stop=true; bar.innerHTML='<div class="msg err">Could not reach Wowhead from this page ('+esc(e.message)+'). Most likely the browser blocked the request (CORS) or you are offline.</div>'; }
-      }).then(function(){ if(!stop){ if((done+failed)%40===0){ paint(); flush(); } } return worker(); });
+      if(stopFlag||!todo.length) return Promise.resolve();
+      var it=todo.shift();
+      return fetchInfo(it).catch(function(){ return new Promise(function(r){setTimeout(r,600)}).then(function(){ return fetchInfo(it); }); })
+        .then(function(rec){ done++; buf.push(rec); },function(e){
+          failed++; lastErr=e.message;
+          if(done===0&&failed>=3){ stopFlag=true; }
+        })
+        .then(function(){ if((done+failed)%50===0){ flush(); paint(); } return worker(); });
     }
     paint();
-    var ws=[]; for(var i=0;i<6;i++) ws.push(worker());
-    Promise.all(ws).then(function(){ if(stop) return; flush(); applyLevels(); if(failed) bar.insertAdjacentHTML("beforeend",'<div class="msg err">'+failed+' lookups failed; press the button again to retry them.</div>'); });
+    var ws=[]; for(var i=0;i<5;i++) ws.push(worker());
+    Promise.all(ws).then(function(){
+      fetching=false; flush();
+      if(done===0&&failed>=3) lastErr=(lastErr||"request failed")+" - the browser probably blocked the request (CORS) or you are offline";
+      updateBar();
+    });
   }
+
+  // ---- hover tooltip
+  var hoverKey=null;
+  function safeTip(html){
+    var d=new DOMParser().parseFromString("<body>"+html+"</body>","text/html");
+    Array.prototype.forEach.call(d.querySelectorAll("script,style,iframe,link,img,object,embed,form"),function(n){n.remove()});
+    Array.prototype.forEach.call(d.body.querySelectorAll("*"),function(n){
+      Array.prototype.slice.call(n.attributes).forEach(function(a){ if(a.name!=="class"&&a.name!=="colspan") n.removeAttribute(a.name); });
+    });
+    return d.body.innerHTML;
+  }
+  function placeTip(e){
+    var t=$("tip"), x=e.clientX+16, y=e.clientY+16, w=t.offsetWidth, h=t.offsetHeight;
+    if(x+w>window.innerWidth-8) x=Math.max(8,e.clientX-w-16);
+    if(y+h>window.innerHeight-8) y=Math.max(8,window.innerHeight-h-8);
+    t.style.left=x+"px"; t.style.top=y+"px";
+  }
+  function showTip(key,e){
+    var t=$("tip"), rec=INFO[key];
+    if(rec){ t.innerHTML=safeTip(rec.tip); t.style.display="block"; placeTip(e); return; }
+    t.innerHTML='<i>Loading tooltip…</i>'; t.style.display="block"; placeTip(e);
+    var p=key.split(":");
+    fetchInfo({id:+p[0],suffix:+p[1],key:key}).then(function(r){
+      idbPut([r]); if(hoverKey===key){ t.innerHTML=safeTip(r.tip); placeTip(e); }
+      items=normalise(); buildStatUI();
+    },function(err){ if(hoverKey===key) t.textContent="Could not load tooltip ("+err.message+")"; });
+  }
+  $("rows").addEventListener("mouseover",function(e){
+    var tr=e.target.closest&&e.target.closest("tr[data-k]");
+    if(!tr||!tr.dataset.k){ return; }
+    if(hoverKey!==tr.dataset.k){ hoverKey=tr.dataset.k; showTip(hoverKey,e); }
+  });
+  $("rows").addEventListener("mousemove",function(e){ if(hoverKey) placeTip(e); });
+  $("rows").addEventListener("mouseleave",function(){ hoverKey=null; $("tip").style.display="none"; });
+  $("rows").addEventListener("mouseout",function(e){
+    var to=e.relatedTarget; if(!to||!to.closest||!to.closest("tr[data-k]")){ hoverKey=null; $("tip").style.display="none"; }
+    else if(to.closest("tr[data-k]").dataset.k!==hoverKey){ hoverKey=null; }
+  });
+
+  // ---- purge
+  $("purgeInfo").onclick=function(){
+    INFO={}; SAMPLE=""; lastErr=""; try{localStorage.removeItem("hcv_lvl");}catch(e){}
+    idbClear().then(function(){ infoRefresh(); status("Item data purged. Vault list kept."); });
+  };
+  $("purgeAll").onclick=function(){
+    try{ Object.keys(localStorage).filter(function(k){return k.indexOf("hcv_")===0}).forEach(function(k){localStorage.removeItem(k)}); }catch(e){}
+    idbClear().then(function(){ location.href=location.pathname; });
+  };
+  idbAll().then(function(rs){ rs.forEach(function(r){ INFO[r.key]=r; }); if(raw.length) infoRefresh(); });
+  try{ localStorage.removeItem("hcv_lvl"); }catch(e){}
 
   function loadUrl(){
     var u=$("url").value.trim(); if(!u) return;
