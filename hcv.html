@@ -97,6 +97,7 @@
 
   <div id="lvlbar"></div>
   <div id="toolbar">
+    <button id="liveBtn" class="primary" title="Fetch the vault directly, no bookmark needed (works if the vault allows cross-site requests)">Refresh from vault</button>
     <button id="purgeInfo" title="Forget fetched levels, stats and tooltips (keeps the vault list)">Purge item data</button>
     <button id="purgeAll" title="Forget everything saved by this page and reload">Purge everything &amp; reload</button>
   </div>
@@ -845,6 +846,25 @@
     $("source").open = false;
   });
 
+  // ---- direct live load: no bookmark needed if the vault allows cross-site requests (CORS)
+  var VAULT_API="https://hcvault.roboto.space/api/vault", liveNote="";
+  function liveLoad(){
+    $("liveBtn").disabled=true;
+    return fetch(VAULT_API,{cache:"no-store"}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(j){
+        var rows=Array.isArray(j)?j:findArray(j);
+        if(!rows||!rows.length||!Array.isArray(rows[0].entries)) throw new Error("unexpected response shape");
+        var lists=[{src:"/api/vault",n:rows.length,rows:rows}];
+        loadLists(lists,"the vault (live, "+new Date().toLocaleTimeString()+")");
+        try{ localStorage.setItem("hcv_lists",JSON.stringify(lists)); localStorage.setItem("hcv_when",new Date().toLocaleString()); }catch(e){}
+        liveNote=""; $("source").open=false; return true;
+      }).catch(function(e){
+        liveNote="Direct vault access failed ("+e.message+"). The vault most likely does not allow other sites to read it (CORS), so the bookmark is still needed.";
+        status(liveNote,"err"); return false;
+      }).then(function(ok){ $("liveBtn").disabled=false; return ok; });
+  }
+  $("liveBtn").onclick=liveLoad;
+
   // startup: ?src=<url>, else last bookmarklet import, else remembered endpoint
   try{
     var p = new URLSearchParams(location.search).get("src");
@@ -857,6 +877,7 @@
       var u = localStorage.getItem("hcv_url");
       if(u){ $("url").value=u; loadUrl(); }
     }
+    if(!p) liveLoad();
   }catch(e){}
 })();
 </script>
