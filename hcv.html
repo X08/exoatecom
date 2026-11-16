@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HC Vault Search</title>
+<meta name="hcv-wrapper" content="1">
 <style>
   :root{
     --bg:#0b0d12; --panel:#141821; --line:#252b38; --text:#e6e9f0; --muted:#8a93a6; --accent:#6aa7ff;
@@ -848,9 +849,28 @@
 
   // ---- direct live load: no bookmark needed if the vault allows cross-site requests (CORS)
   var VAULT_API="https://hcvault.roboto.space/api/vault", liveNote="";
+  function bridgeFetch(url){
+    return new Promise(function(res,rej){
+      var id=Math.random().toString(36).slice(2);
+      var t=setTimeout(function(){ window.removeEventListener("message",h); rej(new Error("bridge timeout")); },25000);
+      function h(e){
+        var m=e.data; if(e.source!==window||!m||m.hcvRes!==id) return;
+        clearTimeout(t); window.removeEventListener("message",h);
+        if(m.error) rej(new Error(m.error));
+        else if(m.status<200||m.status>=300) rej(new Error("HTTP "+m.status));
+        else { try{ res(JSON.parse(m.text)); }catch(x){ rej(new Error("not JSON")); } }
+      }
+      window.addEventListener("message",h);
+      window.postMessage({hcvReq:id,url:url,method:"GET"},"*");
+    });
+  }
+  function hasBridge(){ return document.documentElement.getAttribute("data-hcv-bridge")==="1"; }
+  function vaultGet(){
+    return hasBridge()?bridgeFetch(VAULT_API):fetch(VAULT_API,{cache:"no-store"}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
+  }
   function liveLoad(){
     $("liveBtn").disabled=true;
-    return fetch(VAULT_API,{cache:"no-store"}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    return vaultGet()
       .then(function(j){
         var rows=Array.isArray(j)?j:findArray(j);
         if(!rows||!rows.length||!Array.isArray(rows[0].entries)) throw new Error("unexpected response shape");
@@ -859,7 +879,7 @@
         try{ localStorage.setItem("hcv_lists",JSON.stringify(lists)); localStorage.setItem("hcv_when",new Date().toLocaleString()); }catch(e){}
         liveNote=""; $("source").open=false; return true;
       }).catch(function(e){
-        liveNote="Direct vault access failed ("+e.message+"). The vault most likely does not allow other sites to read it (CORS), so the bookmark is still needed.";
+        liveNote="Could not read the vault ("+e.message+"). "+(hasBridge()?"The userscript is installed but the request failed; are you logged in to the vault in this browser?":"The vault blocks other sites (CORS). Install hcvault-bridge.user.js in Tampermonkey, or use the bookmark.");
         status(liveNote,"err"); return false;
       }).then(function(ok){ $("liveBtn").disabled=false; return ok; });
   }
