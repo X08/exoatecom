@@ -46,13 +46,20 @@ function plain(html) {
   return String(html).replace(/<!--[\s\S]*?-->/g, "").replace(/<\/(tr|p|div)>|<br\s*\/?>/gi, "\n").replace(/<\/(td|th)>/gi, " ").replace(/<[^>]+>/g, "")
     .replace(/&nbsp;| /g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, "&");
 }
+const SLOTS = ["Head","Neck","Shoulder","Back","Chest","Shirt","Tabard","Wrist","Hands","Waist","Legs","Feet","Finger","Trinket","One-Hand","Main Hand","Off Hand","Two-Hand","Ranged","Thrown","Relic","Projectile","Quiver","Ammo Pouch","Bag"];
+const SLOT_ALIAS = { "shoulders": "Shoulder", "held in off-hand": "Off Hand" };
+const SLOT_RE = /^(Head|Neck|Shoulders?|Back|Chest|Shirt|Tabard|Wrist|Hands|Waist|Legs|Feet|Finger|Trinket|One-Hand|Two-Hand|Main Hand|Off Hand|Held In Off-hand|Ranged|Thrown|Relic|Projectile|Quiver|Ammo Pouch|Bag)(?=\s|$)/i;
 function parseTip(html) {
-  const t = plain(html), st = {}, out = { l: 0, i: 0, s: st };
+  const t = plain(html), st = {}, out = { l: 0, i: 0, s: st, sl: "" };
   const add = (k, n) => { st[k] = (st[k] || 0) + n; };
   let m = /Requires\s+Level\s*(\d+)/i.exec(t); if (m) out.l = +m[1];
   m = /Item\s+Level\s*(\d+)/i.exec(t); if (m) out.i = +m[1];
+  let nth = 0;
   for (let line of t.split("\n")) {
     line = line.replace(/\s+/g, " ").trim(); if (!line) continue;
+    nth++;
+    // the equipment slot is on one of the first lines (line 1 is the item name)
+    if (!out.sl && nth > 1 && nth <= 6 && (m = SLOT_RE.exec(line))) { const w = m[1].toLowerCase(); out.sl = SLOT_ALIAS[w] || SLOTS.find((x) => x.toLowerCase() === w) || m[1]; }
     if ((m = /^\+(\d+)\s+(Strength|Agility|Stamina|Intellect|Spirit)\b/i.exec(line))) add(m[2].toLowerCase(), +m[1]);
     else if ((m = /^\+(\d+)\s+(Arcane|Fire|Frost|Nature|Shadow|Holy)\s+Resistance/i.exec(line))) add(m[2].toLowerCase() + " resistance", +m[1]);
     else if ((m = /^\+?(\d+)\s+Armor\b/i.exec(line))) add("armor", +m[1]);
@@ -118,7 +125,7 @@ async function one(k) {
   catch (e) { if (halted) throw e; await sleep(600); j = await get(TIP + id + (suf ? "?rand=" + suf : "")); }
   if (!j || typeof j.tooltip !== "string" || j.tooltip.length < 20) throw new Error("unexpected response for " + k);
   const p = parseTip(j.tooltip);
-  items[k] = { l: p.l, i: p.i, s: p.s };
+  items[k] = { l: p.l, i: p.i, s: p.s, sl: p.sl };
   const b = id % SHARDS;
   shards[b][k] = j.tooltip.replace(/<!--[\s\S]*?-->/g, "");
   touched.add(b);
@@ -132,10 +139,18 @@ async function worker() {
 }
 await Promise.all(Array.from({ length: CONC }, worker));
 
-if (ok) {
+// migration: records saved before slots existed get their slot from the stored tooltip (no new requests)
+let migrated = 0;
+for (const k of Object.keys(items)) {
+  if (items[k].sl !== undefined) continue;
+  const tip = shards[+k.split(":")[0] % SHARDS][k];
+  if (tip) { items[k].sl = parseTip(tip).sl; migrated++; }
+}
+
+if (ok || migrated) {
   wr("items.json", items);
   for (const b of touched) wr("tips/" + b + ".json", shards[b]);
 }
 const m2 = { updatedAt: meta.updatedAt || new Date().toISOString(), vaultItems: want.length, known: want.filter((k) => items[k]).length };
 if (JSON.stringify(m2) !== JSON.stringify(rd("meta.json", {}))) wr("meta.json", m2);
-console.log(`vault ${changed ? "changed" : "unchanged"}; item db ${m2.known}/${m2.vaultItems}; fetched ${ok}, failed ${fail}${halted ? " (stopped early)" : ""}`);
+console.log(`vault ${changed ? "changed" : "unchanged"}; item db ${m2.known}/${m2.vaultItems}; fetched ${ok}, failed ${fail}${migrated ? ", slots added to " + migrated : ""}${halted ? " (stopped early)" : ""}`);

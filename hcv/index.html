@@ -113,6 +113,7 @@
         <input id="q" type="search" placeholder="Item name…">
       </label>
       <label>Item type <select id="type"><option value="">All types</option></select></label>
+      <label>Slot <select id="slot"><option value="">Any slot</option></select></label>
       <label>Min level <input id="lmin" type="number" min="0" placeholder="0"></label>
       <label>Max level <input id="lmax" type="number" min="0" placeholder="80"></label>
     </div>
@@ -124,6 +125,7 @@
           <option value="ilvl">Item level</option>
           <option value="quality">Quality</option>
           <option value="type">Item type</option>
+          <option value="slot">Slot</option>
           <option value="name">Name</option>
         </select>
       </label>
@@ -151,6 +153,7 @@
       <th data-s="name">Item</th>
       <th data-s="quality">Quality</th>
       <th data-s="type" class="hide-m">Type</th>
+      <th data-s="slot" class="hide-m">Slot</th>
       <th data-s="reqLevel" class="num">Req. level</th>
       <th data-s="ilvl" class="num hide-m">iLvl</th>
       <th class="hide-m">Stats (hover an item for its tooltip)</th>
@@ -256,6 +259,7 @@
         type:typeText(o[map.type]),
         reqLevel:rec&&rec.lvl!=null?rec.lvl:(isNaN(lv)?0:lv),
         ilvl:rec?(rec.ilvl||0):0,
+        slot:rec&&rec.slot?rec.slot:"",
         st:st, statText:statText(st), statKeys:Object.keys(st).join(" "),
         count:isNaN(cnt)?null:cnt,
         icon:typeof icon==="string"&&/^(https?:)?\/\//.test(icon)?icon:""
@@ -306,12 +310,14 @@
     var type=$("type").value;
     var lmin=$("lmin").value===""?null:+$("lmin").value;
     var lmax=$("lmax").value===""?null:+$("lmax").value;
+    var slot=$("slot").value;
     var dir=$("dir").value==="desc"?-1:1;
     var by=$("sortBy").value;
     var terms=q?q.split(/\s+/):[];
     var out=items.filter(function(x){
       if(activeQ[x.q]===false) return false;
       if(type && x.type!==type) return false;
+      if(slot && x.slot!==slot) return false;
       if(lmin!==null && x.reqLevel<lmin) return false;
       if(lmax!==null && x.reqLevel>lmax) return false;
       for(var f=0;f<statFilters.length;f++) if((x.st[statFilters[f].k]||0)<statFilters[f].min) return false;
@@ -328,6 +334,7 @@
       else if(by.indexOf("st:")===0) c=(a.st[by.slice(3)]||0)-(b.st[by.slice(3)]||0);
       else if(by==="quality") c=a.q-b.q;
       else if(by==="type") c=a.type.localeCompare(b.type);
+      else if(by==="slot") c=(SLOTS.indexOf(a.slot)+1||99)-(SLOTS.indexOf(b.slot)+1||99);
       else if(by==="count") c=(a.count||0)-(b.count||0);
       else c=a.name.localeCompare(b.name);
       if(c===0) c=a.reqLevel-b.reqLevel || a.name.localeCompare(b.name);
@@ -346,6 +353,7 @@
       return '<tr data-k="'+esc(x.key||"")+'"><td>'+(x.icon?'<img class="icon" loading="lazy" src="'+esc(x.icon)+'" alt="">':'')+nm+'</td>'+
         '<td style="color:'+col+'">'+esc(x.qName)+'</td>'+
         '<td class="hide-m">'+esc(x.type)+'</td>'+
+        '<td class="hide-m">'+esc(x.slot)+'</td>'+
         '<td class="num">'+x.reqLevel+'</td>'+
         '<td class="num hide-m">'+(x.ilvl||"")+'</td>'+
         '<td class="stats hide-m">'+esc(x.statText)+'</td>'+
@@ -387,14 +395,18 @@
     return String(html).replace(/<!--[\s\S]*?-->/g,"").replace(/<\/(tr|p|div)>|<br\s*\/?>/gi,"\n").replace(/<\/(td|th)>/gi," ").replace(/<[^>]+>/g,"")
       .replace(/&nbsp;| /g," ").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;|&#x27;/g,"'").replace(/&amp;/g,"&");
   }
+  var SLOTS=["Head","Neck","Shoulder","Back","Chest","Shirt","Tabard","Wrist","Hands","Waist","Legs","Feet","Finger","Trinket","One-Hand","Main Hand","Off Hand","Two-Hand","Ranged","Thrown","Relic","Projectile","Quiver","Ammo Pouch","Bag"];
+  var SLOT_ALIAS={"shoulders":"Shoulder","held in off-hand":"Off Hand"};
+  var SLOT_RE=/^(Head|Neck|Shoulders?|Back|Chest|Shirt|Tabard|Wrist|Hands|Waist|Legs|Feet|Finger|Trinket|One-Hand|Two-Hand|Main Hand|Off Hand|Held In Off-hand|Ranged|Thrown|Relic|Projectile|Quiver|Ammo Pouch|Bag)(?=\s|$)/i;
   function parseTip(html){
-    var t=plainTip(html), st={}, out={lvl:0,ilvl:0,st:st};
+    var t=plainTip(html), st={}, out={lvl:0,ilvl:0,st:st,slot:""}, nth=0;
     function add(k,n){ st[k]=(st[k]||0)+n; }
     var m=/Requires\s+Level\s*(\d+)/i.exec(t); if(m) out.lvl=+m[1];
     m=/Item\s+Level\s*(\d+)/i.exec(t); if(m) out.ilvl=+m[1];
     t.split("\n").forEach(function(line){
       line=line.replace(/\s+/g," ").trim(); if(!line) return;
-      var m;
+      var m; nth++;
+      if(!out.slot&&nth>1&&nth<=6&&(m=SLOT_RE.exec(line))){ var w=m[1].toLowerCase(); out.slot=SLOT_ALIAS[w]||SLOTS.filter(function(x){return x.toLowerCase()===w})[0]||m[1]; }
       if((m=/^\+(\d+)\s+(Strength|Agility|Stamina|Intellect|Spirit)\b/i.exec(line))) add(m[2].toLowerCase(),+m[1]);
       else if((m=/^\+(\d+)\s+(Arcane|Fire|Frost|Nature|Shadow|Holy)\s+Resistance/i.exec(line))) add(m[2].toLowerCase()+" resistance",+m[1]);
       else if((m=/^\+?(\d+)\s+Armor\b/i.exec(line))) add("armor",+m[1]);
@@ -418,7 +430,7 @@
     return first.then(function(j){
       if(!j||typeof j.tooltip!=="string"||j.tooltip.length<20) throw new Error("unexpected response");
       if(!SAMPLE) SAMPLE=JSON.stringify(j).slice(0,1500);
-      var p=parseTip(j.tooltip), rec={key:it.id+":"+(it.suffix||0),lvl:p.lvl,ilvl:p.ilvl,st:p.st,tip:j.tooltip,at:Date.now()};
+      var p=parseTip(j.tooltip), rec={key:it.id+":"+(it.suffix||0),lvl:p.lvl,ilvl:p.ilvl,st:p.st,slot:p.slot,tip:j.tooltip,at:Date.now()};
       INFO[rec.key]=rec; return rec;
     });
   }
@@ -436,6 +448,13 @@
     sb.value=sel;
     $("statChips").innerHTML=statFilters.map(function(f,i){ return '<span class="chip on" data-i="'+i+'" title="remove">'+esc(f.k)+' ≥ '+f.min+' ✕</span>'; }).join("");
     Array.prototype.forEach.call($("statChips").children,function(c){ c.onclick=function(){ statFilters.splice(+c.dataset.i,1); buildStatUI(); render(); }; });
+    buildSlotUI();
+  }
+  function buildSlotUI(){
+    var cnt={}; items.forEach(function(x){ if(x.slot) cnt[x.slot]=(cnt[x.slot]||0)+1; });
+    var names=Object.keys(cnt).sort(function(a,b){ return (SLOTS.indexOf(a)+1||99)-(SLOTS.indexOf(b)+1||99); });
+    var cur=$("slot").value;
+    $("slot").innerHTML='<option value="">Any slot'+(names.length?"":" (needs item data)")+'</option>'+names.map(function(n){ return '<option value="'+esc(n)+'"'+(n===cur?' selected':'')+'>'+esc(n)+' ('+cnt[n]+')</option>'; }).join("");
   }
   $("statAdd").onclick=function(){
     var k=$("statSel").value; if(!k) return;
@@ -575,7 +594,7 @@
     r.onload=function(){ try{ ingest(JSON.parse(r.result),f.name); }catch(e){ status("Invalid JSON in file: "+e.message,"err"); } };
     r.readAsText(f);
   };
-  ["q","type","lmin","lmax","sortBy","dir"].forEach(function(id){
+  ["q","type","slot","lmin","lmax","sortBy","dir"].forEach(function(id){
     $(id).addEventListener(id==="q"||id==="lmin"||id==="lmax"?"input":"change",render);
   });
   Array.prototype.forEach.call(document.querySelectorAll("th[data-s]"),function(th){
@@ -588,7 +607,7 @@
     };
   });
   $("reset").onclick=function(){
-    $("q").value="";$("type").value="";$("lmin").value="";$("lmax").value="";
+    $("q").value="";$("type").value="";$("slot").value="";$("lmin").value="";$("lmax").value="";
     $("sortBy").value="reqLevel";$("dir").value="asc";
     Array.prototype.forEach.call($("qchips").children,function(c){c.classList.add("on");activeQ[c.dataset.q]=true});
     render();
@@ -863,7 +882,7 @@
     return getJSON("items.json").then(function(db){
       Object.keys(db).forEach(function(k){
         var r=db[k], old=INFO[k];
-        INFO[k]={key:k,lvl:r.l,ilvl:r.i,st:r.s||{},tip:old&&old.tip?old.tip:null};
+        INFO[k]={key:k,lvl:r.l,ilvl:r.i,st:r.s||{},slot:r.sl||"",tip:old&&old.tip?old.tip:null};
       });
       infoRefresh();
     }).catch(function(){});
