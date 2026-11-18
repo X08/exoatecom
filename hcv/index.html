@@ -14,7 +14,7 @@
   header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
   h1{font-size:18px;margin:0;font-weight:600}
   a{color:var(--accent)}
-  main{max-width:1100px;margin:0 auto;padding:16px 20px 60px}
+  main{max-width:min(96vw,2000px);margin:0 auto;padding:16px 20px 60px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
   label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
@@ -49,6 +49,8 @@
   .tip .q0{color:var(--q0)} .tip .q1{color:var(--q1)} .tip .q2{color:var(--q2)} .tip .q3{color:var(--q3)} .tip .q4{color:var(--q4)} .tip .q5{color:var(--q5)} .tip .q6{color:var(--q6)}
   a.name{text-decoration:none} a.name:hover{text-decoration:underline}
   td.stats{color:var(--muted);font-size:12px}
+  #rows td{white-space:nowrap}
+  .tablewrap{overflow-x:auto}
   #toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
   #lvlbar pre{white-space:pre-wrap;font-size:11px;color:var(--muted);margin:6px 0 0;word-break:break-all}
   @media (max-width:640px){ th.hide-m,td.hide-m{display:none} }
@@ -148,7 +150,7 @@
   <div class="meta" id="vaultInfo"></div>
   <details class="panel" id="changesBox" style="display:none"><summary id="changesSum">Recent vault changes</summary><div id="changes" style="margin-top:8px;font-size:13px;max-height:320px;overflow:auto"></div></details>
   <div class="meta" id="count"></div>
-  <table>
+  <div class="tablewrap"><table>
     <thead><tr>
       <th data-s="name">Item</th>
       <th data-s="quality">Quality</th>
@@ -160,7 +162,7 @@
       <th data-s="count" class="num">Qty</th>
     </tr></thead>
     <tbody id="rows"></tbody>
-  </table>
+  </table></div>
 </main>
 
 <script>
@@ -396,17 +398,26 @@
       .replace(/&nbsp;| /g," ").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;|&#x27;/g,"'").replace(/&amp;/g,"&");
   }
   var SLOTS=["Head","Neck","Shoulder","Back","Chest","Shirt","Tabard","Wrist","Hands","Waist","Legs","Feet","Finger","Trinket","One-Hand","Main Hand","Off Hand","Two-Hand","Ranged","Thrown","Relic","Projectile","Quiver","Ammo Pouch","Bag"];
-  var SLOT_ALIAS={"shoulders":"Shoulder","held in off-hand":"Off Hand"};
-  var SLOT_RE=/^(Head|Neck|Shoulders?|Back|Chest|Shirt|Tabard|Wrist|Hands|Waist|Legs|Feet|Finger|Trinket|One-Hand|Two-Hand|Main Hand|Off Hand|Held In Off-hand|Ranged|Thrown|Relic|Projectile|Quiver|Ammo Pouch|Bag)(?=\s|$)/i;
+  var SLOT_ALIAS={shoulders:"Shoulder","held in off-hand":"Off Hand",robe:"Chest",cloak:"Back",ammo:"Projectile"};
+  var SLOT_WORDS="Head|Neck|Shoulders?|Back|Chest|Robe|Cloak|Shirt|Tabard|Wrist|Hands|Waist|Legs|Feet|Finger|Trinket|One-Hand|Two-Hand|Main Hand|Off Hand|Held In Off-hand|Ranged|Thrown|Relic|Projectile|Ammo Pouch|Ammo|Quiver|Bag";
+  var SLOT_TD=new RegExp("<td[^>]*>\\s*(?:<[^>]*>\\s*)*("+SLOT_WORDS+")\\s*(?:<[^>]*>\\s*)*<\\/td>","i");
+  var SLOT_LINE=new RegExp("^("+SLOT_WORDS+")(?:\\s+(?:Cloth|Leather|Mail|Plate|Shield|Sword|Axe|Mace|Dagger|Staff|Polearm|Bow|Gun|Crossbow|Wand|Fist Weapon|Idol|Libram|Totem|Sigil|Miscellaneous|Thrown))?$","i");
+  function slotOf(html,lines){
+    var h=String(html).replace(/<!--[\s\S]*?-->/g,""), m=SLOT_TD.exec(h);
+    if(!m) for(var i=1;i<lines.length&&!/^(Requires|Equip:|Use:|Chance)/i.test(lines[i]);i++){ m=SLOT_LINE.exec(lines[i]); if(m) break; }
+    if(!m) return "";
+    var w=m[1].toLowerCase();
+    return SLOT_ALIAS[w]||SLOTS.filter(function(x){return x.toLowerCase()===w})[0]||m[1];
+  }
   function parseTip(html){
-    var t=plainTip(html), st={}, out={lvl:0,ilvl:0,st:st,slot:""}, nth=0;
+    var t=plainTip(html), st={}, out={lvl:0,ilvl:0,st:st,slot:""};
     function add(k,n){ st[k]=(st[k]||0)+n; }
     var m=/Requires\s+Level\s*(\d+)/i.exec(t); if(m) out.lvl=+m[1];
     m=/Item\s+Level\s*(\d+)/i.exec(t); if(m) out.ilvl=+m[1];
-    t.split("\n").forEach(function(line){
-      line=line.replace(/\s+/g," ").trim(); if(!line) return;
-      var m; nth++;
-      if(!out.slot&&nth>1&&nth<=6&&(m=SLOT_RE.exec(line))){ var w=m[1].toLowerCase(); out.slot=SLOT_ALIAS[w]||SLOTS.filter(function(x){return x.toLowerCase()===w})[0]||m[1]; }
+    var lines=t.split("\n").map(function(x){return x.replace(/\s+/g," ").trim()}).filter(Boolean);
+    out.slot=slotOf(html,lines);
+    lines.forEach(function(line){
+      var m;
       if((m=/^\+(\d+)\s+(Strength|Agility|Stamina|Intellect|Spirit)\b/i.exec(line))) add(m[2].toLowerCase(),+m[1]);
       else if((m=/^\+(\d+)\s+(Arcane|Fire|Frost|Nature|Shadow|Holy)\s+Resistance/i.exec(line))) add(m[2].toLowerCase()+" resistance",+m[1]);
       else if((m=/^\+?(\d+)\s+Armor\b/i.exec(line))) add("armor",+m[1]);
