@@ -49,12 +49,13 @@ function plain(html) {
 const SLOTS = ["Head","Neck","Shoulder","Back","Chest","Shirt","Tabard","Wrist","Hands","Waist","Legs","Feet","Finger","Trinket","One-Hand","Main Hand","Off Hand","Two-Hand","Ranged","Thrown","Relic","Projectile","Quiver","Ammo Pouch","Bag"];
 const SLOT_ALIAS = { shoulders: "Shoulder", "held in off-hand": "Off Hand", robe: "Chest", cloak: "Back", ammo: "Projectile" };
 const SLOT_WORDS = "Head|Neck|Shoulders?|Back|Chest|Robe|Cloak|Shirt|Tabard|Wrist|Hands|Waist|Legs|Feet|Finger|Trinket|One-Hand|Two-Hand|Main Hand|Off Hand|Held In Off-hand|Ranged|Thrown|Relic|Projectile|Ammo Pouch|Ammo|Quiver|Bag";
-const SLOT_TD = new RegExp("<td[^>]*>\\s*(?:<[^>]*>\\s*)*(" + SLOT_WORDS + ")\\s*(?:<[^>]*>\\s*)*<\\/td>", "i");
+// a text node that is exactly a slot word, wherever it sits in the markup
+const SLOT_NODE = new RegExp(">\\s*(" + SLOT_WORDS + ")(?:&nbsp;|\\s)*<", "i");
 const SLOT_LINE = new RegExp("^(" + SLOT_WORDS + ")(?:\\s+(?:Cloth|Leather|Mail|Plate|Shield|Sword|Axe|Mace|Dagger|Staff|Polearm|Bow|Gun|Crossbow|Wand|Fist Weapon|Idol|Libram|Totem|Sigil|Miscellaneous|Thrown))?$", "i");
 function slotOf(html, lines) {
   const h = String(html).replace(/<!--[\s\S]*?-->/g, "");
-  let m = SLOT_TD.exec(h);
-  if (!m) for (let i = 1; i < lines.length && !/^(Requires|Equip:|Use:|Chance)/i.test(lines[i]); i++) if ((m = SLOT_LINE.exec(lines[i]))) break;
+  let m = SLOT_NODE.exec(h);
+  if (!m) for (let i = 1; i < lines.length; i++) if ((m = SLOT_LINE.exec(lines[i]))) break;
   if (!m) return "";
   const w = m[1].toLowerCase();
   return SLOT_ALIAS[w] || SLOTS.find((x) => x.toLowerCase() === w) || m[1];

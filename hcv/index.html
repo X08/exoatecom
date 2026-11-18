@@ -14,7 +14,7 @@
   header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
   h1{font-size:18px;margin:0;font-weight:600}
   a{color:var(--accent)}
-  main{max-width:min(96vw,2000px);margin:0 auto;padding:16px 20px 60px}
+  main{max-width:min(96vw,1400px);margin:0 auto;padding:16px 20px 60px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
   label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
@@ -49,7 +49,7 @@
   .tip .q0{color:var(--q0)} .tip .q1{color:var(--q1)} .tip .q2{color:var(--q2)} .tip .q3{color:var(--q3)} .tip .q4{color:var(--q4)} .tip .q5{color:var(--q5)} .tip .q6{color:var(--q6)}
   a.name{text-decoration:none} a.name:hover{text-decoration:underline}
   td.stats{color:var(--muted);font-size:12px}
-  #rows td{white-space:nowrap}
+  #rows td{white-space:nowrap} #rows td:first-child{min-width:340px}
   .tablewrap{overflow-x:auto}
   #toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
   #lvlbar pre{white-space:pre-wrap;font-size:11px;color:var(--muted);margin:6px 0 0;word-break:break-all}
@@ -101,6 +101,7 @@
   <div id="toolbar">
     <button id="liveBtn" class="primary" title="Reload the auto-updated vault data from this site">Refresh data</button>
     <button id="purgeInfo" title="Forget fetched levels, stats and tooltips (keeps the vault list)">Purge item data</button>
+    <button id="copyTip" title="Hover an item, then press this to copy its raw Wowhead tooltip and what the page read from it">Copy raw tooltip (debug)</button>
     <button id="purgeAll" title="Forget everything saved by this page and reload">Purge everything &amp; reload</button>
   </div>
   <div id="tip" class="tip"></div>
@@ -400,11 +401,11 @@
   var SLOTS=["Head","Neck","Shoulder","Back","Chest","Shirt","Tabard","Wrist","Hands","Waist","Legs","Feet","Finger","Trinket","One-Hand","Main Hand","Off Hand","Two-Hand","Ranged","Thrown","Relic","Projectile","Quiver","Ammo Pouch","Bag"];
   var SLOT_ALIAS={shoulders:"Shoulder","held in off-hand":"Off Hand",robe:"Chest",cloak:"Back",ammo:"Projectile"};
   var SLOT_WORDS="Head|Neck|Shoulders?|Back|Chest|Robe|Cloak|Shirt|Tabard|Wrist|Hands|Waist|Legs|Feet|Finger|Trinket|One-Hand|Two-Hand|Main Hand|Off Hand|Held In Off-hand|Ranged|Thrown|Relic|Projectile|Ammo Pouch|Ammo|Quiver|Bag";
-  var SLOT_TD=new RegExp("<td[^>]*>\\s*(?:<[^>]*>\\s*)*("+SLOT_WORDS+")\\s*(?:<[^>]*>\\s*)*<\\/td>","i");
+  var SLOT_NODE=new RegExp(">\\s*("+SLOT_WORDS+")(?:&nbsp;|\\s)*<","i");
   var SLOT_LINE=new RegExp("^("+SLOT_WORDS+")(?:\\s+(?:Cloth|Leather|Mail|Plate|Shield|Sword|Axe|Mace|Dagger|Staff|Polearm|Bow|Gun|Crossbow|Wand|Fist Weapon|Idol|Libram|Totem|Sigil|Miscellaneous|Thrown))?$","i");
   function slotOf(html,lines){
-    var h=String(html).replace(/<!--[\s\S]*?-->/g,""), m=SLOT_TD.exec(h);
-    if(!m) for(var i=1;i<lines.length&&!/^(Requires|Equip:|Use:|Chance)/i.test(lines[i]);i++){ m=SLOT_LINE.exec(lines[i]); if(m) break; }
+    var h=String(html).replace(/<!--[\s\S]*?-->/g,""), m=SLOT_NODE.exec(h);
+    if(!m) for(var i=1;i<lines.length;i++){ m=SLOT_LINE.exec(lines[i]); if(m) break; }
     if(!m) return "";
     var w=m[1].toLowerCase();
     return SLOT_ALIAS[w]||SLOTS.filter(function(x){return x.toLowerCase()===w})[0]||m[1];
@@ -513,7 +514,17 @@
   }
 
   // ---- hover tooltip
-  var hoverKey=null;
+  var hoverKey=null, lastTipKey=null;
+  $("copyTip").onclick=function(){
+    var b=this, old=b.textContent;
+    if(!lastTipKey){ b.textContent="Hover an item first"; setTimeout(function(){b.textContent=old},1800); return; }
+    tipFor(lastTipKey).then(function(html){
+      var p=parseTip(html), txt="item "+lastTipKey+"\nparsed "+JSON.stringify({lvl:p.lvl,ilvl:p.ilvl,slot:p.slot,st:p.st})+"\nraw tooltip:\n"+html;
+      var done=function(){ b.textContent="Copied!"; setTimeout(function(){b.textContent=old},1800); };
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done,function(){ prompt("Copy this:",txt.slice(0,4000)); });
+      else prompt("Copy this:",txt.slice(0,4000));
+    },function(err){ b.textContent="Failed: "+err.message; setTimeout(function(){b.textContent=old},2500); });
+  };
   function safeTip(html){
     var d=new DOMParser().parseFromString("<body>"+html+"</body>","text/html");
     Array.prototype.forEach.call(d.querySelectorAll("script,style,iframe,link,img,object,embed,form"),function(n){n.remove()});
@@ -548,7 +559,7 @@
   $("rows").addEventListener("mouseover",function(e){
     var tr=e.target.closest&&e.target.closest("tr[data-k]");
     if(!tr||!tr.dataset.k){ return; }
-    if(hoverKey!==tr.dataset.k){ hoverKey=tr.dataset.k; showTip(hoverKey,e); }
+    if(hoverKey!==tr.dataset.k){ hoverKey=tr.dataset.k; lastTipKey=hoverKey; showTip(hoverKey,e); }
   });
   $("rows").addEventListener("mousemove",function(e){ if(hoverKey) placeTip(e); });
   $("rows").addEventListener("mouseleave",function(){ hoverKey=null; $("tip").style.display="none"; });
