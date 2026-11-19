@@ -1004,6 +1004,10 @@
   $("ordClear").onclick=function(){ CART={}; saveCart(); renderCart(); $("ordResult").innerHTML=""; };
   try{ $("ordTo").value=localStorage.getItem("hcv_recipient")||""; }catch(e){}
   $("ordTo").addEventListener("input",function(){ try{ localStorage.setItem("hcv_recipient",this.value.trim()); }catch(e){} });
+  function receipt(t){
+    try{ var j=JSON.parse(t); if(j&&j.publicId) return "Order placed.\nReceipt code: "+j.publicId+(j.createdAt?"\nCreated: "+new Date(j.createdAt).toLocaleString():""); }catch(e){}
+    return null;
+  }
   function pretty(t){ try{ return JSON.stringify(JSON.parse(t),null,1); }catch(e){ return t; } }
   function bodyFailed(t){ try{ var j=JSON.parse(t); return !!(j&&(j.error||j.success===false||j.ok===false)); }catch(e){ return false; } }
   function buildOrder(){
@@ -1029,7 +1033,7 @@
     fetch(ORDERS_URL,{method:"POST",credentials:"omit",headers:{"content-type":"application/json",accept:"application/json"},body:JSON.stringify(o)})
       .then(function(r){ return r.text().then(function(t){ return {ok:r.ok,status:r.status,text:t}; }); })
       .then(function(r){
-        if(r.ok&&!bodyFailed(r.text)){ CART={}; saveCart(); renderCart(); ordMsg("Order accepted by the vault (HTTP "+r.status+"):\n"+pretty(r.text),"ok"); }
+        if(r.ok&&!bodyFailed(r.text)){ CART={}; saveCart(); renderCart(); ordMsg(receipt(r.text)||"Order accepted by the vault (HTTP "+r.status+"):\n"+pretty(r.text),"ok"); }
         else ordMsg("The vault did not accept the order (HTTP "+r.status+"). Your order is still here.\n"+pretty(r.text),"err");
       },function(){
         ordMsg("","err",'The browser blocked sending the order straight from this page (the vault does not allow other sites to post to it). Nothing was sent. '+
@@ -1047,7 +1051,8 @@
       .then(function(r){ return r.text().then(function(t){ return {ok:r.ok,status:r.status,t:t}; }); })
       .then(function(r){
         if(r.ok) history.replaceState(null,"",location.pathname+location.search);
-        alert((r.ok?"Vault replied (HTTP "+r.status+"):\n":"The vault refused the order (HTTP "+r.status+"):\n")+r.t.slice(0,1500));
+        var rc=null; try{ var j=JSON.parse(r.t); if(r.ok&&j&&j.publicId) rc="Order placed.\nReceipt code: "+j.publicId+(j.createdAt?"\nCreated: "+new Date(j.createdAt).toLocaleString():""); }catch(e){}
+        alert(rc||((r.ok?"Vault replied (HTTP "+r.status+"):\n":"The vault refused the order (HTTP "+r.status+"):\n")+r.t.slice(0,1500)));
       },function(e){ alert("Could not send the order: "+e.message); });
   }
   try{
