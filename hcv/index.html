@@ -51,6 +51,10 @@
   td.stats{color:var(--muted);font-size:12px}
   #rows td{white-space:nowrap} #rows td:first-child{min-width:340px}
   .tablewrap{overflow-x:auto}
+  .oq{width:58px;padding:4px 6px} button.oadd{padding:4px 9px}
+  #cartItems .ci{display:flex;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)}
+  #cartItems .ci .nm{flex:1;font-weight:600}
+  #ordResult pre{white-space:pre-wrap;margin:6px 0 0;font-size:12px}
   #toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
   #lvlbar pre{white-space:pre-wrap;font-size:11px;color:var(--muted);margin:6px 0 0;word-break:break-all}
   @media (max-width:640px){ th.hide-m,td.hide-m{display:none} }
@@ -150,6 +154,18 @@
 
   <div class="meta" id="vaultInfo"></div>
   <details class="panel" id="changesBox" style="display:none"><summary id="changesSum">Recent vault changes</summary><div id="changes" style="margin-top:8px;font-size:13px;max-height:320px;overflow:auto"></div></details>
+  <details class="panel" id="cartBox"><summary id="cartSum">Order (0 items)</summary>
+    <div id="cartItems" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:10px">
+      <label>Recipient character <input id="ordTo" type="text" maxlength="12" placeholder="Character name" style="width:190px"></label>
+      <label>Gold <input id="ordGold" type="number" min="0" value="0"></label>
+      <label>Silver <input id="ordSilver" type="number" min="0" max="99" value="0"></label>
+      <button id="ordPlace" class="primary">Place order</button>
+      <button id="ordClear">Clear order</button>
+    </div>
+    <div id="ordResult"></div>
+    <p class="meta">Orders go to the vault from your browser. If the browser blocks that, you'll get a link to place it from the vault page with this bookmark: <a id="ordbm" href="#" style="padding:3px 8px;border:1px solid var(--accent);border-radius:6px;text-decoration:none">Place HCV order</a> (drag it to your bookmarks bar once).</p>
+  </details>
   <div class="meta" id="count"></div>
   <div class="tablewrap"><table>
     <thead><tr>
@@ -161,6 +177,7 @@
       <th data-s="ilvl" class="num hide-m">iLvl</th>
       <th class="hide-m">Stats (hover an item for its tooltip)</th>
       <th data-s="count" class="num">Qty</th>
+      <th>Order</th>
     </tr></thead>
     <tbody id="rows"></tbody>
   </table></div>
@@ -265,6 +282,8 @@
         slot:rec&&rec.slot?rec.slot:"",
         st:st, statText:statText(st), statKeys:Object.keys(st).join(" "),
         count:isNaN(cnt)?null:cnt,
+        suffix:o.suffixId||0,
+        maxQ:(o.itemId!=null&&o.available!=null)?Math.max(0,Math.min(+o.available||0,o.maxPerOrder!=null?+o.maxPerOrder||1:+o.available||0)):0,
         icon:typeof icon==="string"&&/^(https?:)?\/\//.test(icon)?icon:""
       };
     });
@@ -360,7 +379,8 @@
         '<td class="num">'+x.reqLevel+'</td>'+
         '<td class="num hide-m">'+(x.ilvl||"")+'</td>'+
         '<td class="stats hide-m">'+esc(x.statText)+'</td>'+
-        '<td class="num">'+(x.count==null?"":x.count)+'</td></tr>';
+        '<td class="num">'+(x.count==null?"":x.count)+'</td>'+
+        '<td>'+(x.maxQ>0?'<input class="oq" type="number" min="1" max="'+x.maxQ+'" value="1" title="max '+x.maxQ+'"> <button class="oadd" data-k="'+esc(x.key)+'" title="Add to order">+</button>':'')+'</td></tr>';
     }).join("");
     if(out.length>shown.length) $("count").textContent+=" (showing first "+shown.length+")";
   }
@@ -945,6 +965,96 @@
   $("liveBtn").onclick=function(){ staticLoad(true); };
   setInterval(function(){ if(!document.hidden) staticLoad(false); },300000);
   document.addEventListener("visibilitychange",function(){ if(!document.hidden) staticLoad(false); });
+
+
+  // ---- ordering: POST to the vault's order endpoint; if the browser blocks that, hand the order to a bookmark on the vault page
+  var ORDERS_URL="https://hcvault.roboto.space/api/orders";
+  var CART={}; try{ CART=JSON.parse(localStorage.getItem("hcv_cart")||"{}")||{}; }catch(e){}
+  function saveCart(){ try{ localStorage.setItem("hcv_cart",JSON.stringify(CART)); }catch(e){} }
+  function ordMsg(text,kind,html){ $("ordResult").innerHTML='<div class="msg '+(kind||"ok")+'">'+(html||'<pre>'+esc(text)+'</pre>')+'</div>'; $("cartBox").open=true; }
+  function renderCart(){
+    var ks=Object.keys(CART), n=0;
+    ks.forEach(function(k){ n+=CART[k].qty; });
+    $("cartSum").textContent="Order ("+ks.length+" item"+(ks.length===1?"":"s")+(ks.length?", "+n+" total":"")+")";
+    $("cartItems").innerHTML=ks.length?ks.map(function(k){
+      var c=CART[k];
+      return '<div class="ci"><span class="nm">'+esc(c.name)+'</span><input class="cq" type="number" min="1" max="'+c.max+'" value="'+c.qty+'" data-k="'+esc(k)+'" style="width:70px"> <span class="meta" style="margin:0">max '+c.max+'</span><button class="crm" data-k="'+esc(k)+'" title="Remove">✕</button></div>';
+    }).join(""):'<span class="meta">Nothing yet. Use the + button on an item row.</span>';
+  }
+  function addToCart(key,qty){
+    var x=null; for(var i=0;i<items.length;i++) if(items[i].key===key){ x=items[i]; break; }
+    if(!x||!(x.maxQ>0)) return;
+    var cur=CART[key]?CART[key].qty:0, q=Math.max(1,Math.min(x.maxQ,cur+qty));
+    CART[key]={id:x.id,suffix:x.suffix,name:x.name,qty:q,max:x.maxQ};
+    saveCart(); renderCart(); $("cartBox").open=true;
+  }
+  $("rows").addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("button.oadd"); if(!b) return;
+    var inp=b.parentNode.querySelector(".oq"); addToCart(b.dataset.k,Math.max(1,parseInt(inp.value,10)||1));
+    var t=b.textContent; b.textContent="✓"; setTimeout(function(){ b.textContent=t; },700);
+  });
+  $("cartItems").addEventListener("change",function(e){
+    var i=e.target.closest&&e.target.closest("input.cq"); if(!i||!CART[i.dataset.k]) return;
+    CART[i.dataset.k].qty=Math.max(1,Math.min(CART[i.dataset.k].max,parseInt(i.value,10)||1)); saveCart(); renderCart();
+  });
+  $("cartItems").addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("button.crm"); if(!b) return;
+    delete CART[b.dataset.k]; saveCart(); renderCart();
+  });
+  $("ordClear").onclick=function(){ CART={}; saveCart(); renderCart(); $("ordResult").innerHTML=""; };
+  try{ $("ordTo").value=localStorage.getItem("hcv_recipient")||""; }catch(e){}
+  $("ordTo").addEventListener("input",function(){ try{ localStorage.setItem("hcv_recipient",this.value.trim()); }catch(e){} });
+  function pretty(t){ try{ return JSON.stringify(JSON.parse(t),null,1); }catch(e){ return t; } }
+  function bodyFailed(t){ try{ var j=JSON.parse(t); return !!(j&&(j.error||j.success===false||j.ok===false)); }catch(e){ return false; } }
+  function buildOrder(){
+    var ks=Object.keys(CART), to=$("ordTo").value.trim();
+    if(!ks.length){ ordMsg("The order is empty.","err"); return null; }
+    if(!/^[\p{L}]{2,12}$/u.test(to)){ ordMsg("Enter the recipient character name (2 to 12 letters).","err"); return null; }
+    var gold=Math.floor(+$("ordGold").value)||0, silver=Math.floor(+$("ordSilver").value)||0;
+    if(gold<0||silver<0||silver>99){ ordMsg("Gold must be 0 or more and silver 0 to 99.","err"); return null; }
+    return {recipientCharacter:to,gold:gold,silver:silver,items:ks.map(function(k){ return {itemId:CART[k].id,suffixId:CART[k].suffix,quantity:CART[k].qty}; })};
+  }
+  function summary(o){
+    return o.items.map(function(i){ var c=CART[i.itemId+":"+i.suffixId]; return i.quantity+" × "+(c?c.name:"item "+i.itemId); }).join("\n")+(o.gold||o.silver?"\n\nGold "+o.gold+", silver "+o.silver:"");
+  }
+  function hashLink(o){
+    var names={}; o.items.forEach(function(i){ var c=CART[i.itemId+":"+i.suffixId]; if(c) names[i.itemId+":"+i.suffixId]=c.name; });
+    var json=JSON.stringify({order:o,names:names});
+    return "https://hcvault.roboto.space/#hcvorder="+encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
+  }
+  $("ordPlace").onclick=function(){
+    var o=buildOrder(); if(!o) return;
+    if(!confirm("Send this order to "+o.recipientCharacter+"?\n\n"+summary(o))) return;
+    var btn=$("ordPlace"); btn.disabled=true;
+    fetch(ORDERS_URL,{method:"POST",credentials:"omit",headers:{"content-type":"application/json",accept:"application/json"},body:JSON.stringify(o)})
+      .then(function(r){ return r.text().then(function(t){ return {ok:r.ok,status:r.status,text:t}; }); })
+      .then(function(r){
+        if(r.ok&&!bodyFailed(r.text)){ CART={}; saveCart(); renderCart(); ordMsg("Order accepted by the vault (HTTP "+r.status+"):\n"+pretty(r.text),"ok"); }
+        else ordMsg("The vault did not accept the order (HTTP "+r.status+"). Your order is still here.\n"+pretty(r.text),"err");
+      },function(){
+        ordMsg("","err",'The browser blocked sending the order straight from this page (the vault does not allow other sites to post to it). Nothing was sent. '+
+          '<a target="_blank" rel="noopener" href="'+esc(hashLink(o))+'">Open the vault with this order attached</a>, then click the <b>Place HCV order</b> bookmark there.');
+      }).then(function(){ btn.disabled=false; });
+  };
+  // bookmark that runs on the vault page itself (same site, so the browser allows the POST)
+  function bmOrder(){
+    var m=/(?:^|[#&])hcvorder=([^&]+)/.exec(location.hash), d;
+    if(!m){ alert("No order attached to this address. Build the order on the HC Vault Search page first."); return; }
+    try{ d=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1]))))); }catch(e){ alert("Could not read the attached order."); return; }
+    var o=d.order, lines=o.items.map(function(i){ return i.quantity+" x "+(d.names[i.itemId+":"+i.suffixId]||"item "+i.itemId); }).join("\n");
+    if(!confirm("Send this order to "+o.recipientCharacter+"?\n\n"+lines+(o.gold||o.silver?"\n\nGold "+o.gold+", silver "+o.silver:""))) return;
+    fetch("/api/orders",{method:"POST",credentials:"omit",headers:{"content-type":"application/json",accept:"application/json"},body:JSON.stringify(o)})
+      .then(function(r){ return r.text().then(function(t){ return {ok:r.ok,status:r.status,t:t}; }); })
+      .then(function(r){
+        if(r.ok) history.replaceState(null,"",location.pathname+location.search);
+        alert((r.ok?"Vault replied (HTTP "+r.status+"):\n":"The vault refused the order (HTTP "+r.status+"):\n")+r.t.slice(0,1500));
+      },function(e){ alert("Could not send the order: "+e.message); });
+  }
+  try{
+    $("ordbm").href="javascript:"+encodeURIComponent("("+bmOrder.toString()+")()");
+    $("ordbm").onclick=function(e){ e.preventDefault(); alert("Drag this button to your bookmarks bar instead of clicking it."); };
+  }catch(e){}
+  renderCart();
 
   // startup: ?src=<url>, else last bookmarklet import, else remembered endpoint
   try{
