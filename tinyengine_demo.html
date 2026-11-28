@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>tinyengine — physical engine sound demo</title>
+<style>
+  :root{--bg:#101215;--panel:#181b20;--line:#2a2f37;--fg:#e6e8eb;--dim:#8b929c;--acc:#ff8a3d;--ok:#5ad19a;--red:#ff5d5d}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,sans-serif}
+  main{max-width:880px;margin:0 auto;padding:18px}
+  h1{font-size:18px;margin:0 0 2px} .sub{color:var(--dim);margin:0 0 14px;font-size:13px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;flex:1;min-width:250px}
+  .panel h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:0 0 8px;font-weight:600}
+  button,select{background:#232830;color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
+  button:hover{border-color:#444c58} button.primary{background:var(--acc);color:#1a1008;border-color:var(--acc);font-weight:600}
+  button.on{background:#2d3a2f;border-color:var(--ok)} button:disabled{opacity:.4;cursor:default}
+  label{display:flex;align-items:center;gap:10px;margin:6px 0;color:var(--dim)} label span{width:82px;flex:none}
+  input[type=range]{flex:1;accent-color:var(--acc)} .val{width:40px;text-align:right;color:var(--fg);font-variant-numeric:tabular-nums}
+  #gauge{width:100%;height:84px;display:block}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+  .stat{background:#12151a;border-radius:8px;padding:6px 8px} .stat b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
+  .stat i{font-style:normal;font-size:11px;color:var(--dim)}
+  .gears{display:flex;gap:6px;flex-wrap:wrap} .gears button{min-width:38px;padding:7px 0} .gears button.sel{background:var(--acc);color:#1a1008;border-color:var(--acc);font-weight:700}
+  kbd{background:#232830;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}
+  .keys{color:var(--dim);font-size:12.5px;line-height:1.9} .lim{color:var(--red);font-weight:700;visibility:hidden} .lim.on{visibility:visible}
+</style></head><body><main>
+<h1>tinyengine <span style="color:var(--dim);font-weight:400">— engine sound from physics, not samples</span></h1>
+<p class="sub">Cylinders, valves, intake &amp; exhaust pipes, clutch and gearbox, simulated live in a 10 KB WebAssembly module.</p>
+
+<div class="row">
+  <div class="panel" style="flex:2">
+    <h2>Engine</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="preset">
+        <option value="3">5.7 L cross-plane V8</option><option value="4">4.0 L flat-plane V8</option>
+        <option value="0" selected>2.0 L inline-4</option><option value="1">3.0 L inline-6</option>
+        <option value="2">3.5 L V6</option><option value="5">2.0 L flat-4</option><option value="6">Single cylinder</option>
+      </select>
+      <button id="start" class="primary">Start engine</button>
+      <button id="stop" disabled>Stop</button>
+      <label style="margin:0;gap:6px"><input type="checkbox" id="assist" checked> <span style="width:auto">Assist (auto clutch + shifts)</span></label>
+    </div>
+    <canvas id="gauge" width="800" height="84"></canvas>
+    <div class="stats">
+      <div class="stat"><b id="sRpm">0</b><i>rpm <span class="lim" id="lim">LIMITER</span></i></div>
+      <div class="stat"><b id="sSpd">0</b><i>km/h</i></div>
+      <div class="stat"><b id="sTq">0</b><i>N·m</i></div>
+      <div class="stat"><b id="sMap">101</b><i>MAP kPa</i></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Gear</h2>
+    <div class="gears" id="gears"></div>
+    <h2 style="margin-top:14px">Keys</h2>
+    <div class="keys"><kbd>W</kbd>/<kbd>↑</kbd> throttle &nbsp; <kbd>S</kbd>/<kbd>↓</kbd> brake &nbsp; <kbd>Space</kbd> clutch<br>
+    <kbd>E</kbd> shift up &nbsp; <kbd>Q</kbd> shift down &nbsp; <kbd>N</kbd> neutral &nbsp; <kbd>R</kbd> reverse</div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel"><h2>Pedals (drag, or use keys)</h2>
+    <label><span>Throttle</span><input type="range" id="thr" min="0" max="1" step="0.01" value="0"><b class="val" id="vThr">0</b></label>
+    <label><span>Clutch</span><input type="range" id="clu" min="0" max="1" step="0.01" value="0"><b class="val" id="vClu">0</b></label>
+    <label><span>Brake</span><input type="range" id="brk" min="0" max="1" step="0.01" value="0"><b class="val" id="vBrk">0</b></label>
+  </div>
+  <div class="panel"><h2>Sound mix</h2>
+    <label><span>Exhaust</span><input type="range" id="mE" min="0" max="2" step="0.01" value="1"></label>
+    <label><span>Intake</span><input type="range" id="mI" min="0" max="2" step="0.01" value="0.6"></label>
+    <label><span>Engine block</span><input type="range" id="mB" min="0" max="2" step="0.01" value="0.5"></label>
+    <label><span>Level range</span><input type="range" id="mD" min="0" max="1" step="0.01" value="0.6"></label>
+    <label><span>Volume</span><input type="range" id="mM" min="0" max="3" step="0.01" value="1.5"></label>
+  </div>
+</div>
+
+<script>
+const WASM_B64 = "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AADwQgAAtEMAABZEAAAAAQEBAAAAAAAAAIAdRAAAh0MAADRDAADhQwAAtEMAAAdEAAC0QgABAAEAAQABAAAAAAEBAQEBAAAABQAAAAMAAAAHAAAABAAAAAgAAAACAAAABgAAAAAAAAAAALRDAAA0QwAAB0QAAQABALQCBG5hbWUAExJ0aW55ZW5naW5lX096Lndhc20B9wEZABB0ZV9wcmVzZXRfY29uZmlnAQx0ZV9maWxsX2ZpcmUCB3RlX2luaXQDBm1lbWNweQQLdGVfc2VnX2luaXQFBnRlX3NpbgYIdGVfcmVzZXQHEHRlX2dldF90ZWxlbWV0cnkICXRlX3JlbmRlcgkIdGVfdmFsdmUKCnRlX29yaWZpY2ULBndfaW5pdAwFd19pZ24NCXdfc3RhcnRlcg4Fd190aHIPBXdfY2x1EAV3X2JyaxEGd19nZWFyEgV3X21peBMFd19keW4UCHdfbmdlYXJzFQl3X3JlZGxpbmUWBndfaWRsZRcId19yZW5kZXIYBXdfdGVsBxIBAA9fX3N0YWNrX3BvaW50ZXIJCgEABy5yb2RhdGEAOAlwcm9kdWNlcnMBDHByb2Nlc3NlZC1ieQEMVWJ1bnR1IGNsYW5nETE4LjEuMyAoMXVidW50dTEpACwPdGFyZ2V0X2ZlYXR1cmVzAisPbXV0YWJsZS1nbG9iYWxzKwhzaWduLWV4dA==";
+const WORKLET_SRC = `// AudioWorklet processor: runs tinyengine.wasm on the audio thread.
+// Control messages in:  {t:'init',preset} {t:'ctl', thr,clu,brk,gear,ign,starter} {t:'mix', e,i,b,m,dyn}
+// Messages out:         {t:'ready', ngears,redline,idle}  and  {t:'tel', v:Float32Array(10)} (~60 Hz)
+class EngineProc extends AudioWorkletProcessor {
+  constructor(opts) {
+    super();
+    this.x = null; this.view = null; this.queue = []; this.n = 0;
+    const { wasm, preset } = opts.processorOptions;
+    WebAssembly.instantiate(wasm, {}).then(({ instance }) => {
+      this.x = instance.exports;
+      this.start(preset);
+      for (const m of this.queue) this.apply(m);
+      this.queue = [];
+    });
+    this.port.onmessage = (ev) => (this.x ? this.apply(ev.data) : this.queue.push(ev.data));
+  }
+  start(preset) {
+    this.x.init(preset, sampleRate);
+    this.port.postMessage({ t: 'ready', ngears: this.x.n_gears(), redline: this.x.redline(), idle: this.x.idle_rpm() });
+  }
+  apply(m) {
+    const x = this.x;
+    if (m.t === 'init') this.start(m.preset);
+    else if (m.t === 'ctl') {
+      x.throttle(m.thr); x.clutch(m.clu); x.brake(m.brk); x.gear(m.gear);
+      x.ignition(m.ign ? 1 : 0); x.starter(m.starter ? 1 : 0);
+    } else if (m.t === 'mix') { x.mix(m.e, m.i, m.b, m.m); x.dynamics(m.dyn); }
+  }
+  process(inputs, outputs) {
+    const out = outputs[0];
+    if (!this.x) return true;
+    const n = out[0].length;
+    const p = this.x.render(n);
+    if (!this.view || this.view.buffer !== this.x.memory.buffer) this.view = new Float32Array(this.x.memory.buffer);
+    const f = this.view.subarray(p >> 2, (p >> 2) + n);
+    for (let c = 0; c < out.length; c++) out[c].set(f);
+    if (++this.n % 4 === 0) {
+      const tp = this.x.telemetry() >> 2;
+      this.port.postMessage({ t: 'tel', v: this.view.slice(tp, tp + 10) });
+    }
+    return true;
+  }
+}
+registerProcessor('engine', EngineProc);
+`;
+const $ = (id) => document.getElementById(id);
+let ctx = null, node = null, info = { ngears: 6, redline: 6800, idle: 850 };
+let tel = { rpm: 0, spd: 0, tq: 0, map: 101, gear: 0, lim: 0, running: 0 };
+const st = { thr: 0, clu: 0, brk: 0, gear: 0, ign: 0, starter: 0 };
+const key = { thr: 0, brk: 0, clu: 0 };
+let startedAt = 0;
+
+function b64ToBytes(b){ const s = atob(b), a = new Uint8Array(s.length); for (let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; }
+
+function buildGears(){
+  const g = $('gears'); g.innerHTML = '';
+  const mk = (label, val) => { const b = document.createElement('button'); b.textContent = label; b.dataset.g = val; b.onclick = () => { st.gear = val; shift.active = false; }; g.appendChild(b); };
+  mk('R', -1); mk('N', 0); for (let i = 1; i <= info.ngears; i++) mk(String(i), i);
+}
+
+async function ensureAudio(){
+  if (ctx) { if (ctx.state === 'suspended') await ctx.resume(); return; }
+  ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  const url = URL.createObjectURL(new Blob([WORKLET_SRC], { type: 'text/javascript' }));
+  await ctx.audioWorklet.addModule(url);
+  node = new AudioWorkletNode(ctx, 'engine', { numberOfInputs: 0, outputChannelCount: [2],
+    processorOptions: { wasm: b64ToBytes(WASM_B64), preset: +$('preset').value } });
+  node.port.onmessage = (ev) => {
+    const m = ev.data;
+    if (m.t === 'ready') { info = m; buildGears(); sendMix(); }
+    else if (m.t === 'tel') { const v = m.v; tel = { rpm: v[0], spd: v[1], tq: v[2], map: v[4], slip: v[6], gear: v[7], lim: v[8], running: v[9] }; }
+  };
+  const gain = ctx.createGain(); gain.gain.value = 1; node.connect(gain).connect(ctx.destination);
+  setInterval(sendCtl, 8);
+}
+function sendCtl(){ if (node) node.port.postMessage({ t: 'ctl', ...st }); }
+function sendMix(){ if (node) node.port.postMessage({ t: 'mix', e: +$('mE').value, i: +$('mI').value, b: +$('mB').value, m: +$('mM').value, dyn: +$('mD').value }); }
+for (const id of ['mE','mI','mB','mM','mD']) $(id).oninput = sendMix;
+
+$('start').onclick = async () => { await ensureAudio(); st.ign = 1; st.starter = 1; startedAt = performance.now(); $('stop').disabled = false; };
+$('stop').onclick = () => { st.ign = 0; st.starter = 0; };
+$('preset').onchange = () => { if (node) { st.ign = 0; st.starter = 0; st.gear = 0; node.port.postMessage({ t: 'init', preset: +$('preset').value }); } };
+
+// ---- keyboard ----
+const keymap = { w: 'thr', arrowup: 'thr', s: 'brk', arrowdown: 'brk', ' ': 'clu' };
+addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase(); if (e.repeat) return;
+  if (k === ' ' && document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if (keymap[k]) { key[keymap[k]] = 1; e.preventDefault(); }
+  else if (k === 'e') { st.gear = Math.min(info.ngears, st.gear + 1); shift.active = false; }
+  else if (k === 'q') { st.gear = Math.max(-1, st.gear - 1); shift.active = false; }
+  else if (k === 'n') st.gear = 0; else if (k === 'r') st.gear = -1;
+});
+addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if (keymap[k]) key[keymap[k]] = 0; });
+
+// ---- pedal smoothing from keys / sliders ----
+const slider = { thr: $('thr'), clu: $('clu'), brk: $('brk') };
+const held = { thr: false, clu: false, brk: false };       // slider acts like a pedal: held = pressed to that depth, release = foot off
+for (const k in slider) {
+  slider[k].addEventListener('pointerdown', () => { held[k] = true; });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) slider[k].addEventListener(ev, () => { held[k] = false; });
+}
+
+// ---- assist: auto clutch + automatic gearbox, driven from telemetry ----
+const shift = { active: false, t0: 0, target: 1 };
+function assist(now, dt){
+  const rpm = tel.rpm, spd = Math.abs(tel.spd), thr = st.thr;
+  let clu = st.clu;
+  if (shift.active) {
+    const t = (now - shift.t0) / 1000;
+    if (t < 0.10) { clu = 1; st.thr = Math.min(st.thr, 0.05); }
+    else if (t < 0.18) { st.gear = shift.target; clu = 1; }
+    else if (t < 0.45) clu = Math.max(0, 1 - (t - 0.18) / 0.27);
+    else shift.active = false;
+    return clu;
+  }
+  if (!tel.running) return 1;
+  if (st.gear === 0 && (key.thr || thr > 0.05)) st.gear = 1;           // pull away from neutral
+  if (st.gear >= 1 || st.gear === -1) {
+    const launch = spd < 10;
+    if (launch) clu = (thr > 0.02 || spd > 1) ? Math.max(0, Math.min(1, 1 - (rpm - 1150) / 1000)) : 1;
+    else clu = 0;
+    if (key.brk && spd < 4) clu = 1;
+    if (st.gear > 0) {
+      if (rpm > 0.88 * info.redline && thr > 0.5 && st.gear < info.ngears) { shift.active = true; shift.t0 = now; shift.target = st.gear + 1; }
+      else if (!launch && rpm < 1700 && st.gear > 1 && thr < 0.6) { shift.active = true; shift.t0 = now; shift.target = st.gear - 1; }
+    }
+    if (key.clu) clu = 1;
+  }
+  return clu;
+}
+
+// ---- main UI loop ----
+const cv = $('gauge'), g2 = cv.getContext('2d');
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const useSlider = (k) => held[k];
+  // pedal targets: keys override sliders while pressed
+  const rate = { thr: 7, clu: 9, brk: 6 };
+  for (const k of ['thr','clu','brk']) {
+    let tgt = key[k] ? 1 : (useSlider(k) ? +slider[k].value : 0);
+    if (k === 'clu' && $('assist').checked && !useSlider('clu') && !key.clu) tgt = null;
+    if (tgt !== null) st[k] += Math.max(-rate[k]*dt, Math.min(rate[k]*dt, tgt - st[k]));
+  }
+  if ($('assist').checked && !(useSlider('clu') || key.clu)) st.clu = assist(now, dt);
+  else if (!$('assist').checked) shift.active = false;
+  // starter: release when running or after 4 s
+  if (st.starter && (tel.rpm > 600 || now - startedAt > 4000)) st.starter = 0;
+  for (const k of ['thr','clu','brk']) { if (!useSlider(k)) slider[k].value = st[k]; }
+  $('vThr').textContent = st.thr.toFixed(2); $('vClu').textContent = st.clu.toFixed(2); $('vBrk').textContent = st.brk.toFixed(2);
+  $('sRpm').textContent = Math.round(tel.rpm); $('sSpd').textContent = Math.round(tel.spd); $('sTq').textContent = Math.round(tel.tq);
+  $('sMap').textContent = Math.round(tel.map); $('lim').classList.toggle('on', !!tel.lim);
+  for (const b of $('gears').children) b.classList.toggle('sel', +b.dataset.g === st.gear);
+  // gauge
+  const W = cv.width, H = cv.height, max = Math.ceil(info.redline * 1.2 / 1000) * 1000;
+  g2.clearRect(0, 0, W, H);
+  g2.fillStyle = '#12151a'; g2.fillRect(0, 22, W, 26);
+  const x = (v) => Math.min(1, v / max) * W;
+  g2.fillStyle = tel.rpm > info.redline ? '#ff5d5d' : '#ff8a3d'; g2.fillRect(0, 22, x(tel.rpm), 26);
+  g2.fillStyle = 'rgba(255,93,93,.35)'; g2.fillRect(x(info.redline), 22, W - x(info.redline), 26);
+  g2.fillStyle = '#8b929c'; g2.font = '12px system-ui'; g2.textAlign = 'center';
+  for (let v = 0; v <= max; v += 1000) { g2.fillRect(x(v), 48, 1, 6); g2.fillText(v/1000, Math.min(W-8, Math.max(8, x(v))), 70); }
+  g2.fillStyle = '#e6e8eb'; g2.textAlign = 'left'; g2.fillText('idle ' + Math.round(info.idle) + ' · redline ' + Math.round(info.redline), 4, 14);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+buildGears();
+</script></main></body></html>
